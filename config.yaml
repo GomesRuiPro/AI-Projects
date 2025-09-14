@@ -6,22 +6,8 @@ main:
     location: ""  # Available: [Region > Country > Continent]
     gender: ""  # Available: [female, male]
 vlm:
-  training_path: data/training/visual/genres
+  model:
   testing_path: data/testing/visual/genres
-  clip_resolution: 640x360 # "1280x720", "854x480", "640x360", "426x240"
-  clip_duration_minutes: 3
-  clip_uploaded_days_ago: 30
-  model: #This suggests each batch has 6 videos, each with 3 channels, 360 frames, and spatial dimensions 112x112.
-    batch_size: 2 # affects memory RAM and memory GPU usage 
-    learning_rate: 0.001 # default
-    momentum: 0.9 # default
-    epochs: 10 # default
-    use_model_finetuned: true # to use preset data from the model
-    frames_per_second: 16 # how many frames to get from the video to train your model - affects gpu usage
-    frames_resolution: 112x112 # should be equal or smaller than clip_resolution - affects gpu usage
-    device_type: cuda:0 # <device hardware accelerator>:<GPU index> (nvidia)
-    device_debug: 1
-    num_workers: 8 # affects cpu usage
 llm:
   model: llama3.2
   number_of_games: 2

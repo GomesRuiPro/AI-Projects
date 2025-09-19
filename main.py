@@ -3,7 +3,7 @@ import os
 import sys
 from package.llm import LLMGaming
 from package.vlm import VLMGaming
-from package.utilities import Utility
+from tools.utilities import Utility
 import traceback
 from numba import cuda
 
@@ -16,8 +16,6 @@ GREETING_TEMPLATE = (
     "Simply send me a quick gameplay video, by telling me the filename (mp4 or avi), and I can tell you how it would fit the current audience!\n"
     "For more details on the final results, you can use the following keys:\n"
     "\tq - to quit\n"
-    "\trl - to reset the visual model with local data\n"
-    "\tro - to reset the visual model with online data\n"
     "\tf=<focus> - to focus on a specific topic (by default: general)\n"
     "\ts=<source> - to specify which sources should we use to validate your game (by default: social media)\n"
     "> start "
@@ -26,56 +24,39 @@ GREETING_TEMPLATE = (
 QUESTION_TEMPLATE = (
     "\nDo you want to ask anything else? As a reminder, here are some keys you can use:\n"
     "\tq - to quit\n"
-    "\trl - to reset the visual model with local data\n"
-    "\tro - to reset the visual model with online data\n"
     "\tf=<focus> - to focus on a specific topic (by default: general)\n"
     "\ts=<source> - to specify which sources should we use to validate your game (by default: social media)\n"
     "> start "
 )
 
+# Globals
 question = None
-force_retrain = False
-force_download_videos = None
 video_filename = None
+
+class RetryException(Exception):
+    pass
 
 def hello(template):
     video_filename = config["main"]['file_game']
     question = None
-    force_retrain = False
-    force_download_videos = None
 
     while video_filename is None or question is None:
         question = input(template).strip()
         params = question.split(" ")
 
-        if len(params) == 2:         
-               
+        if len(params) > 1 and len(params) < 4:            
             video_filename = params[0]
-            if "r" in params[1]:
-                force_retrain = True
-                if "ro" in params:
-                    force_download_videos = True
-                if len(params) < 2 and video_filename is None:
-                    print("Missing filename of the gameplay video. Please provide a filename to proceed.")
-                    continue
-                if len(params) > 1:
-                    video_filename = params[0]
+            
         elif len(params) == 1:
-            if params[0] == 'rl':
-                force_retrain = True
-            elif params[0] == 'ro':
-                force_retrain = True
-                force_download_videos = True
-            elif params[0] == 'q':
+            if params[0] == 'q':
                 goodbye()
                 sys.exit(0)
             else:
                 video_filename = params[0] if params[0] else config["main"]['file_game']
-
         else:
-            raise VLMGaming.RetryException("Unexpected input data.")
+            raise RetryException("Unexpected input data.")
 
-        return question, force_retrain, force_download_videos, video_filename
+        return question, video_filename
 
 def goodbye():
     print("All good! If you need more help, you know where to find me!")
@@ -98,9 +79,9 @@ def parse_user_input(input_str):
 def main():
     global question, force_retrain, video_filename, force_download_videos
 
-    question, force_retrain, force_download_videos, video_filename = hello(GREETING_TEMPLATE)
-    use_model_finetuned = config["vlm"]['model']["use_model_finetuned"]
-    vlm_gaming = VLMGaming(use_model_finetuned=True)
+    question, video_filename = hello(GREETING_TEMPLATE)
+    use_model_finetuned = config["vlm"]["use_model_finetuned"]
+    vlm_gaming = VLMGaming()
     llm_gaming = LLMGaming()
     
     while True:
@@ -109,34 +90,31 @@ def main():
             # Get input
             focus, sources = parse_user_input(question)
 
-            # Get list of games per genre
-            games_per_genre = {}
-            for genre in vlm_gaming.genreDataset.labels:
-                games_per_genre[genre[0]] = llm_gaming.get_list_games(genre[0], number_of_results=config["llm"]['number_of_games'])
-
-            vlm_gaming.start_model(force_retrain=force_retrain, force_download_videos=force_download_videos, use_model_finetuned=use_model_finetuned, games_per_genre=games_per_genre)
+            # vlm_gaming.start_model(force_retrain=force_retrain, force_download_videos=force_download_videos, use_model_finetuned=use_model_finetuned, games_per_genre=games_per_genre)
 
             # Classify genre using VLM
             print("Classifying video...")
-            genre, confidence = vlm_gaming.predict_game_genre(video_filename_path)
-            print(f"Video genre detected: {genre} with {confidence}% confidence.\nWas this expected? [Y or N]")
-            question = input("> ").lower().strip()
-            if (question == "n"):
-                predicted_genres = vlm_gaming.get_predicted_genres()
-                predicted_genres_str = Utility.format_list_tuples_to_string(predicted_genres, ['Genre', 'Confidence'], ['', '%'])
-                while(True):
-                    print(f"\nWhich genre from the list would you define your game to be? {predicted_genres_str}")
-                    question = input("> ").lower().strip()
-                    if (question not in Utility.get_list_by_column(predicted_genres, 0)):
-                        print(f"The genre {question} does not exist! Please try again...")
-                        continue
-                    break
-                genre = question
-                vlm_gaming.teach_model_single_video(video_filename_path, genre)
-                # question and Punish
-            else:
-                pass
-                # reward
+            vlm_gaming.start_model(with_genre=True)
+            vlm_gaming.get_genre(video_filename_path)
+            # genre, confidence = vlm_gaming.predict_game_genre(video_filename_path)
+            # print(f"Video genre detected: {genre} with {confidence}% confidence.\nWas this expected? [Y or N]")
+            # question = input("> ").lower().strip()
+            # if (question == "n"):
+            #     predicted_genres = vlm_gaming.get_predicted_genres()
+            #     predicted_genres_str = Utility.format_list_tuples_to_string(predicted_genres, ['Genre', 'Confidence'], ['', '%'])
+            #     while(True):
+            #         print(f"\nWhich genre from the list would you define your game to be? {predicted_genres_str}")
+            #         question = input("> ").lower().strip()
+            #         if (question not in Utility.get_list_by_column(predicted_genres, 0)):
+            #             print(f"The genre {question} does not exist! Please try again...")
+            #             continue
+            #         break
+            #     genre = question
+            #     vlm_gaming.teach_model_single_video(video_filename_path, genre)
+            #     # question and Punish
+            # else:
+            #     pass
+            #     # reward
 
 
             # Placeholder for extracting features or sending results
@@ -149,11 +127,11 @@ def main():
 
 
             # Ask if user wants to continue or ask something else
-            question, force_retrain, force_download_videos, video_filename = hello(QUESTION_TEMPLATE)
-        except VLMGaming.RetryException as ex:
+            question, video_filename = hello(QUESTION_TEMPLATE)
+        except RetryException as ex:
             print(f"Error found: {ex}\n Please try again...")
             traceback.print_exc()
-            question, force_retrain, force_download_videos, video_filename = hello(QUESTION_TEMPLATE)
+            question, video_filename = hello(QUESTION_TEMPLATE)
             continue
         except Exception as ex:
             traceback.print_exc()

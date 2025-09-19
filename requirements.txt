@@ -1,13 +1,10 @@
-langchain
-langchain-ollama
-langchain-chroma
 pandas
-torchvision>=0.10.0
-torch>=1.9.0
+transformers
 pillow
 numpy
 av
 opencv-python
+opencv-python-headless
 jsoncomment
 pycuda
 yt-dlp 
@@ -16,3 +13,12 @@ google-api-python-client
 isodate
 pytz
 ffmpeg-python
+
+langchain
+langchain-ollama
+langchain-chroma
+# git+https://github.com/openai/CLIP.git
+fvcore
+torchvision>=0.10.0
+torchaudio>=0.10.0
+torch>=2.0.0

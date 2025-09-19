@@ -5,7 +5,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 from yt_dlp import YoutubeDL
 from googleapiclient.discovery import build
-from package.utilities import Utility
+from innovation.FeedbackerAi.tools.utilities import Utility
 
 # Load configuration
 config = Utility.load_yaml()["apis"]["google"]

@@ -2,7 +2,7 @@
 import os
 import argparse
 import sys
-from package.utilities import Utility
+from innovation.FeedbackerAi.tools.utilities import Utility
 import ffmpeg
 
 # Load configuration

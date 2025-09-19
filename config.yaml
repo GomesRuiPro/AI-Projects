@@ -6,7 +6,22 @@ main:
     location: ""  # Available: [Region > Country > Continent]
     gender: ""  # Available: [female, male]
 vlm:
-  model:
+  models:
+    genre:
+      name: x3d
+      version: xs
+      is_local: False
+    environment: 
+      repository: openai/CLIP
+      name: clip_resnet50
+    movement:
+      repository: facebookresearch/pytorchvideo
+      name: slowfast_r50
+    object:
+      name: yolo
+      version: v5s
+      is_local: False
+  use_model_finetuned: True
   testing_path: data/testing/visual/genres
 llm:
   model: llama3.2

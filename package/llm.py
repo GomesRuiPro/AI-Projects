@@ -1,6 +1,6 @@
 from langchain_ollama.llms import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
-from package.utilities import Utility
+from tools.utilities import Utility
 
 
 config = Utility.load_yaml()["llm"]

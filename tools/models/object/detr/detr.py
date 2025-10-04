@@ -49,7 +49,9 @@ class Detr(VideoFeatureModel):
             [
                 transforms.ToPILImage(),
                 transforms.Resize(transform_params['side_size']),
-                transforms.CenterCrop(transform_params['crop_size'])
+                transforms.CenterCrop(transform_params['crop_size']),
+                # transforms.ToTensor(),
+                # transforms.Normalize(self.mean, self.std),
             ]
         )
 

@@ -3,9 +3,9 @@ import os
 import sys
 from package.llm import LLMGaming
 from package.vlm import VLMGaming
+from package.exception_handler import RetryException, QuitRequestException
 from tools.utilities import Utility
 import traceback
-from numba import cuda
 
 config = Utility.load_yaml()
 TESTING_PATH = os.path.join(os.getcwd(), config['vlm']['testing_path'])
@@ -33,8 +33,6 @@ QUESTION_TEMPLATE = (
 question = None
 video_filename = None
 
-class RetryException(Exception):
-    pass
 
 def hello(template):
     video_filename = config["main"]['file_game']
@@ -44,13 +42,12 @@ def hello(template):
         question = input(template).strip()
         params = question.split(" ")
 
-        if len(params) > 1 and len(params) < 4:            
+        if len(params) > 1 and len(params) < 4:
             video_filename = params[0]
-            
+
         elif len(params) == 1:
             if params[0] == 'q':
-                goodbye()
-                sys.exit(0)
+                raise QuitRequestException
             else:
                 video_filename = params[0] if params[0] else config["main"]['file_game']
         else:
@@ -58,9 +55,11 @@ def hello(template):
 
         return question, video_filename
 
+
 def goodbye():
     print("All good! If you need more help, you know where to find me!")
-    print("Note: Keep in mind I am a simple PoC. If you find any errors or want to improve me, contact the developer Rui Gomes.")    
+    print("Note: Keep in mind I am a simple PoC. If you find any errors or want to improve me, contact the developer Rui Gomes.")
+
 
 def parse_user_input(input_str):
     focus = "general"
@@ -76,6 +75,7 @@ def parse_user_input(input_str):
 
     return focus, sources
 
+
 def main():
     global question, force_retrain, video_filename, force_download_videos
 
@@ -83,7 +83,7 @@ def main():
     use_model_finetuned = config["vlm"]["use_model_finetuned"]
     vlm_gaming = VLMGaming()
     llm_gaming = LLMGaming()
-    
+
     while True:
         try:
             video_filename_path = os.path.join(TESTING_PATH, video_filename)
@@ -94,37 +94,17 @@ def main():
 
             # Classify genre using VLM
             print("Classifying video...")
-            vlm_gaming.start_model(with_genre=True)
-            vlm_gaming.get_genre(video_filename_path)
-            # genre, confidence = vlm_gaming.predict_game_genre(video_filename_path)
-            # print(f"Video genre detected: {genre} with {confidence}% confidence.\nWas this expected? [Y or N]")
-            # question = input("> ").lower().strip()
-            # if (question == "n"):
-            #     predicted_genres = vlm_gaming.get_predicted_genres()
-            #     predicted_genres_str = Utility.format_list_tuples_to_string(predicted_genres, ['Genre', 'Confidence'], ['', '%'])
-            #     while(True):
-            #         print(f"\nWhich genre from the list would you define your game to be? {predicted_genres_str}")
-            #         question = input("> ").lower().strip()
-            #         if (question not in Utility.get_list_by_column(predicted_genres, 0)):
-            #             print(f"The genre {question} does not exist! Please try again...")
-            #             continue
-            #         break
-            #     genre = question
-            #     vlm_gaming.teach_model_single_video(video_filename_path, genre)
-            #     # question and Punish
-            # else:
-            #     pass
-            #     # reward
+            vlm_gaming.start_model(
+                with_object=True, with_video_classification=True)
+            genre = vlm_gaming.get_genre(video_filename_path)
 
-
-            # Placeholder for extracting features or sending results
-            # e.g., game features extraction or other analysis
+            # Extract features from video
+            result = vlm_gaming.execute(video_filename_path)
 
             # Placeholder for LLM interaction (e.g., get trends, generate responses)
             # For example:
             # response = llm_gaming.getTrends(filename, genre, sources)
             # print(response)
-
 
             # Ask if user wants to continue or ask something else
             question, video_filename = hello(QUESTION_TEMPLATE)
@@ -133,11 +113,15 @@ def main():
             traceback.print_exc()
             question, video_filename = hello(QUESTION_TEMPLATE)
             continue
+        except QuitRequestException as ex:
+            print("The user asked the application to quit...")
+            break
         except Exception as ex:
             traceback.print_exc()
             break
 
     goodbye()
+
 
 if __name__ == "__main__":
     main()

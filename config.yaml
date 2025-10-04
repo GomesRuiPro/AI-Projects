@@ -7,22 +7,36 @@ main:
     gender: ""  # Available: [female, male]
 vlm:
   models:
-    genre:
-      name: x3d
-      version: xs
+    environment:
+    - repository: ultralytics
+      name: torch-hub-yolov5s
       is_local: False
-    environment: 
-      repository: openai/CLIP
-      name: clip_resnet50
+      is_enabled: False
     movement:
-      repository: facebookresearch/pytorchvideo
-      name: slowfast_r50
-    object:
-      name: yolo
-      version: v5s
+    - repository: none
+      name: none
       is_local: False
+      is_enabled: False
+    object:
+    - repository: facebook
+      name: detr-resnet-50
+      is_local: False
+      is_enabled: True
+      confidence_threshold: 0.5
+    video_classification:
+    - repository: pytorch
+      name: x3d-xs
+      is_local: False
+      is_enabled: False
   use_model_finetuned: True
   testing_path: data/testing/visual/genres
+  clip_resolution: 360x640
+  clip_duration_seconds: 300
+  # batch_size: 6
+  # epochs: 10
+  max_num_frames: 50  # the amout of frames we want to read from the video during the clip duration set (e.g. if video has 300 frames, we are only getting 16 frames)
+  device_type: cuda:0 # <device hardware accelerator>:<GPU index> (nvidia)
+  device_debug: 1
 llm:
   model: llama3.2
   number_of_games: 2
@@ -33,6 +47,8 @@ local:
     video-codec: h264
     video-bitrate: 500k
 apis:
+  hugging_face:
+    token: YOUR_HUGGING_FACE_TOKEN
   google:
     youtube-key: YOUR_YOUTUBE_API_TOKEN
     video_published_before_days: 10

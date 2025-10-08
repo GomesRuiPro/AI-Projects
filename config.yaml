@@ -5,7 +5,7 @@ main:
     age_group: ""  # Available: [young > teen > adult > old]
     location: ""  # Available: [Region > Country > Continent]
     gender: ""  # Available: [female, male]
-vlm:
+vlm: 
   models:
     environment:
     - repository: ultralytics
@@ -21,6 +21,11 @@ vlm:
     - repository: facebook
       name: detr-resnet-50
       is_local: False
+      is_enabled: False
+      confidence_threshold: 0.5
+    - repository: openai
+      name: clip-vit-base-patch32
+      is_local: False
       is_enabled: True
       confidence_threshold: 0.5
     video_classification:
@@ -28,7 +33,7 @@ vlm:
       name: x3d-xs
       is_local: False
       is_enabled: False
-  use_model_finetuned: True
+  use_model_finetuned: False
   testing_path: data/testing/visual/genres
   clip_resolution: 360x640
   clip_duration_seconds: 300
@@ -38,8 +43,19 @@ vlm:
   device_type: cuda:0 # <device hardware accelerator>:<GPU index> (nvidia)
   device_debug: 1
 llm:
-  model: llama3.2
-  number_of_games: 2
+  models:
+    conversation: # text generation/chatbots
+    - repository: None
+      name: llama3.2
+      is_local: False
+      is_enabled: True
+    question_answer:
+    - repository: deepset
+      name: roberta-base-squad2
+      is_local: False
+      is_enabled: True
+  use_model_finetuned: False
+  device_debug: 1
 local:
   ffmpeg:
     audio-codec: aac

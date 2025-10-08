@@ -1,9 +1,9 @@
 import re
 import os
 import sys
-from package.llm import LLMGaming
-from package.vlm import VLMGaming
-from package.exception_handler import RetryException, QuitRequestException
+from core.llm import LLMGaming
+from core.vlm import VLMGaming
+from core.exception_handler import RetryException, QuitRequestException
 from tools.utilities import Utility
 import traceback
 
@@ -83,6 +83,9 @@ def main():
     use_model_finetuned = config["vlm"]["use_model_finetuned"]
     vlm_gaming = VLMGaming()
     llm_gaming = LLMGaming()
+    
+    llm_gaming.start_model(with_question_answer=True)
+    vlm_gaming.start_model(with_object=True, with_video_classification=True)
 
     while True:
         try:
@@ -94,17 +97,15 @@ def main():
 
             # Classify genre using VLM
             print("Classifying video...")
-            vlm_gaming.start_model(
-                with_object=True, with_video_classification=True)
             genre = vlm_gaming.get_genre(video_filename_path)
 
+            # Get trends keywords
+            response = llm_gaming.get_trends(genre)
+            print(response)
+            
             # Extract features from video
             result = vlm_gaming.execute(video_filename_path)
 
-            # Placeholder for LLM interaction (e.g., get trends, generate responses)
-            # For example:
-            # response = llm_gaming.getTrends(filename, genre, sources)
-            # print(response)
 
             # Ask if user wants to continue or ask something else
             question, video_filename = hello(QUESTION_TEMPLATE)

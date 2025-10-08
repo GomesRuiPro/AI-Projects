@@ -1,4 +1,4 @@
-from package.exception_handler import QuitRequestException
+from core.exception_handler import QuitRequestException
 from tools.models.model import Model
 
 
@@ -25,11 +25,11 @@ class UserInput(Model):
             questionTemplate += "\nOnly one answer is possible"
 
         questionTemplate += "\n> "
-        question = input(questionTemplate).strip()
+        answer = input(questionTemplate).strip()
 
-        if question == 'q':
+        if answer == 'q':
             raise QuitRequestException
         if self.is_multiple_answers_allowed:
-            answers = question.split(" ")
+            answers = answer.split(" ")
             return answers
-        return [question]
+        return answer

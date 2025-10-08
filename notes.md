@@ -226,21 +226,28 @@ Feature implemented:
 - set a number of different models for object detection, environment and movement.
 - get genre will be stubbed for now - DONE
 - install the model coming from hugging face or - DOEN
-- check and filter by confidence
-Wanted features:
+- check and filter by confidence - DONE
+- Show image with squares for object detection - DONE
 
-- get strings from llm and feed it to the model
-- refactor code to make it easier to replace models:
-1. if none exist, fallback?
-2. take out huge tree struct in config.json = no repos, version,.. just model name.
-3. do not create factory classes based on model names, just types of model name
-4. model class can repesent the model name. make same methods in parent class
+- restructure model class with fallback (factory, iterator and strategy DPs) - DONE
 
+
+
+TODO features:
+- fix issue where openai is ready Xth frame at a time. it should read all frames but then preselected by the model after
+- Connect non local LLM get Trends with VLM: get from source > extract keywords and format answer > convert answer to features > ask VLM to look for these features > show results
 
 
 Next features:
+- create individual models based on age group, region, gender (model execution process is the same, but data is different so finetuning would be different)
+- 
 - set the models locally
-- add multiple datasets so they can be chosen independently
+- finetune models to gaming context
+- create pipelines / chain of responsability pattern to run those model in certain order
+- create a new model to replace the LLM to a SocialMedia API > sentiment-analysis > summarization > theme/keyword extraction process for accurate results (this represents one model. we would need a model for each type of source where the API is different)
+- getGenre needs to be improved by detecting also subgenres
+- Try to make this bot script to run as a subprocess in the backgroud.
+- When looking to finetune, try to automatically detect when a game is booting and record that session for a couple of minutes. Put it in a specific folder so that we can later manually decide how to label it
 
 LIMITATIONS:
 

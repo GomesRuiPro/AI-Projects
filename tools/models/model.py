@@ -5,16 +5,42 @@ import os
 
 
 class Model(ABC):
+    
+    model = None
 
     def __init__(self, config, model_name):  # Used for fallback models
         self.model_name = model_name
         self.config = config
 
+class TextModel(Model, ABC): # Used for text models
+    def __init__(self, config, model_name, pretrained, to_debug):
+        super().__init__(config, model_name)
+        self.pretrained = pretrained
+        self.to_debug = to_debug
+
     @abstractmethod
-    def execute(self):
+    def setup(self):
         pass
+    
+    def execute(self, question, model_execute_fn=None):
+         # Setup model
+        if not self.model:
+            self.setup()
 
+            # Get predictions
+            if model_execute_fn:
+                results = model_execute_fn(question)
+            
+            if results is None:
+                if self.to_debug:
+                    print(f"No answer found for question: {question}")
+                return None
+            
+            if self.to_debug:
+                print(f"Answers found for the question asked: {results}")
 
+        return results
+    
 class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to extract features
 
     def __init__(self, config, model_name, device, pretrained, to_debug):
@@ -34,7 +60,7 @@ class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to ex
         self.video_frames = video_frames
 
     @abstractmethod
-    def setup(self):
+    def setup(self, num_frames_to_read=None, clip_duration_seconds=None, video_frame=None):
         pass
 
 
@@ -42,33 +68,32 @@ class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to ex
 class VideoFeatureModel(VideoModel, ABC):
     def __init__(self, config, model_name, device, pretrained, to_debug):
         super().__init__(config, model_name, device, pretrained, to_debug)
-        self.model = None
 
-    def tensory(self):
+    # def tensory(self):
 
-        start_sec = 0
-        end_sec = start_sec + self.clip_duration_seconds
+    #     start_sec = 0
+    #     end_sec = start_sec + self.clip_duration_seconds
 
-        # using 3 channel RGB frame
-        frames = [self.transform(frame[:3, :, :])
-                  for frame in self.video_frames]
-        video_tensor = torch.stack(frames)
-        video_tensor = video_tensor.permute(1, 0, 2, 3)
-        video_tensor = video_tensor.unsqueeze(0)  # shape: (1, C, T, H, W)
+    #     # using 3 channel RGB frame
+    #     frames = [self.transform(frame[:3, :, :])
+    #               for frame in self.video_frames]
+    #     video_tensor = torch.stack(frames)
+    #     video_tensor = video_tensor.permute(1, 0, 2, 3)
+    #     video_tensor = video_tensor.unsqueeze(0)  # shape: (1, C, T, H, W)
 
-        # # Apply padding
-        # total_frames = len(frames)
-        # if total_frames >= self.max_num_frames:
-        #     start = torch.randint(0, total_frames - self.max_num_frames + 1, (1,)).item()
-        #     video_tensor = video_tensor[start:start + self.max_num_frames]
-        # else:
-        #     # Pad if too short
-        #     pad_len = self.max_num_frames - total_frames
-        #     pad_shape = (pad_len, *video_tensor.shape[1:])
-        #     pad = torch.zeros(pad_shape, dtype=video_tensor.dtype)
-        #     video_tensor = torch.cat([video_tensor, pad], dim=0)
+    #     # # Apply padding
+    #     # total_frames = len(frames)
+    #     # if total_frames >= self.max_num_frames:
+    #     #     start = torch.randint(0, total_frames - self.max_num_frames + 1, (1,)).item()
+    #     #     video_tensor = video_tensor[start:start + self.max_num_frames]
+    #     # else:
+    #     #     # Pad if too short
+    #     #     pad_len = self.max_num_frames - total_frames
+    #     #     pad_shape = (pad_len, *video_tensor.shape[1:])
+    #     #     pad = torch.zeros(pad_shape, dtype=video_tensor.dtype)
+    #     #     video_tensor = torch.cat([video_tensor, pad], dim=0)
 
-        return video_tensor
+    #     return video_tensor
 
     # def execute(self, video_tensor, model):
 

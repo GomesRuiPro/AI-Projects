@@ -5,10 +5,37 @@ import isodate
 from datetime import datetime, timezone
 import cv2
 import numpy as np
+import re
+import json
 
 
 class Utility:
+    
+    @staticmethod
+    def substring_from_char(s, char):
+        pos = s.find(char)
 
+        if pos != -1:
+            # Get substring after the character
+            substring = s[pos+1:]
+            return substring
+        else:
+            return s
+
+    @staticmethod
+    def find_json_from_text(text):
+        match = re.search(r'\{.*\}', text)
+        if match:
+            json_str = match.group()
+            try:
+                data = json.loads(json_str)
+                return data
+            except json.JSONDecodeError:
+                return None
+        else:
+            return None
+            
+            
     @staticmethod
     def show_image(video_frame, model_results=None, label_map=None):
        # Step 1: Convert to NumPy array

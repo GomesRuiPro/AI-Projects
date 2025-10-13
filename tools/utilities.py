@@ -8,8 +8,31 @@ import numpy as np
 import re
 import json
 
-
 class Utility:
+    
+    # MISC #
+    
+    @staticmethod
+    def call_lambda(method_to_call, method_args=None):
+        content = None
+        if method_args is None:
+            # Call method without arguments
+            content = method_to_call()
+        elif isinstance(method_args, (list, tuple)):
+            # Unpack multiple arguments
+            content = method_to_call(*method_args)
+        else:
+            # Single argument
+            content = method_to_call(method_args)
+        return content
+    
+    @staticmethod
+    def list_of_dict_to_str(list_of_dicts):
+        return "\n".join([Utility.dict_to_str(d) for d in list_of_dicts])
+                             
+    @staticmethod
+    def dict_to_str(d):
+        return ', '.join(f"{key}: {value}" for key, value in d.items() if key)
     
     @staticmethod
     def substring_from_char(s, char):
@@ -19,6 +42,15 @@ class Utility:
             # Get substring after the character
             substring = s[pos+1:]
             return substring
+        else:
+            return s
+    
+    @staticmethod
+    def substring_until_char(s, char):
+        pos = s.find(char)
+        
+        if pos != -1:
+            return s[:pos]
         else:
             return s
 
@@ -99,6 +131,8 @@ class Utility:
     def get_list_by_column(matrix, column_idx):
         return [row[column_idx] for row in matrix]
 
+    # DATE/TIME #
+    
     @staticmethod
     def str_to_datetime(date_str, format_str="%Y-%m-%dT%H:%M:%SZ"):
         dt = datetime.strptime(date_str, format_str)
@@ -117,6 +151,18 @@ class Utility:
         # Parse ISO 8601 duration to timedelta
         td = isodate.parse_duration(duration)
         return int(td.total_seconds())
+            
+    # FILE #
+    
+    @staticmethod
+    def files_to_dict(folder_path):
+        files_dict = {}
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            if os.path.isfile(file_path):
+                topic = Utility.substring_until_char(filename, ".")
+                files_dict[topic] = None
+        return files_dict
 
     @staticmethod
     def load_yaml():
@@ -149,6 +195,7 @@ class Utility:
     def remove_file(file_path):
         try:
             os.remove(file_path)
+            print(f"Removed file {file_path}")
         except FileNotFoundError as e:
             print(f"The file '{file_path}' does not exist.")
             raise e
@@ -157,6 +204,68 @@ class Utility:
                 f"You do not have permission to delete this file '{file_path}'.")
             raise e
 
+    @staticmethod
+    def create_file_from_path(file_path, content=""):
+        """
+        Creates a file at the specified path, creating any necessary directories.
+
+        Args:
+            file_path (str): The full path to the file to be created.
+            content (str, optional): The content to write to the file. Defaults to empty string.
+
+        Returns:
+            str: The path of the created file, or None if an error occurred.
+        """
+        try:
+            # Extract directory from the file path
+            directory = os.path.dirname(file_path)
+            # Create directories if they don't exist
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+            # Create and write to the file
+            with open(file_path, "w") as f:
+                f.write(content)
+            print(f"Created file {file_path}")
+            return file_path
+        except Exception as e:
+            print(f"Error creating file: {e}")
+            return None
+        
+    @staticmethod    
+    def append_to_file(file_path, new_content):
+        """
+        Append new content to an existing file.
+
+        Args:
+            file_path (str): The path to the file.
+            new_content (str): The content to append to the file.
+        """
+        try:
+            with open(file_path, "a") as f:
+                f.write("\n"+new_content)  # Adds a new line after the content
+            print(f"Content appended to {file_path}")
+        except Exception as e:
+            raise Exception(f"Error appending to file: {e}")
+    
+    @staticmethod
+    def read_data_from_file(file_path):
+        """
+        Reads data from a file.
+
+        Args:
+            file_path (str): Path to the file containing the data.
+
+        Returns:
+            The contents of the file as a string.
+        """
+        try:
+            with open(file_path, 'r') as f:
+                data = f.read()
+                return data
+        except FileNotFoundError:
+            print(f"File not found: {file_path}")
+            return None
+    
     @staticmethod
     def does_file_exist(file_path):
         if not isinstance(file_path, str):
@@ -183,6 +292,7 @@ class Utility:
                 break
         return files
 
+    # SCRIPT #
     @staticmethod
     def change_video_codec(video_path):
         video_converted_path = Utility.rename_file(video_path, "converted")
@@ -194,11 +304,23 @@ class Utility:
         if code != 0:
             video_converted_path = video_path
         return video_converted_path
+    
+    @staticmethod
+    def scrappe_url(domain, resource, ui_type, ui_label, max_results, cache_enabled=True):
+        args = ["--max_results=" + max_results]
+        
+        if cache_enabled:
+            args.append("--cache_enabled")
+            
+        code, output, error = Utility.__call_executable_tool(
+            "local", 'web_scrapper', domain, resource, ui_type, ui_label, args)
+
+        return output
 
     @staticmethod
     def download_video(searchText, clip_resolution, clip_duration_seconds, games_per_genre_length, clip_uploaded_days_ago, output_path):
         code, output, error = Utility.__call_executable_tool("apis",
-                                                             'video_downloader', searchText,
+                                                             'youtube_api', "download", searchText,
                                                              ["--resolution=" + clip_resolution,
                                                               f"--max_results=" +
                                                               str(games_per_genre_length),
@@ -208,14 +330,18 @@ class Utility:
                                                               str(clip_uploaded_days_ago),
                                                                  "--output_path=" + output_path]
                                                              )
+    
+    @staticmethod
+    def get_video_comments(searchText, clip_resolution, clip_duration_seconds, games_per_genre_length, clip_uploaded_days_ago, output_path):
+        code, output, error = Utility.__call_executable_tool("apis", 'youtube_api', "comments", searchText, [f"--max_results="])
 
     @staticmethod
-    def __call_executable_tool(parent_folder, name, input="", args=[]):
+    def __call_executable_tool(parent_folder, name, command="", input="", args=[]):
         exeutable_files = Utility.get_list_files(
             parent_folder, name, root_dir=os.path.join(os.getcwd(), "tools"))
         if exeutable_files is not None and len(exeutable_files) == 1:
             # Build the command list
-            command = ['python3', exeutable_files[0][0], input] + args
+            command = ['python3', exeutable_files[0][0], command, input] + args
             # Run the subprocess
             try:
                 result = subprocess.run(
@@ -237,3 +363,5 @@ class Utility:
             print(f"Exiting '{name} {input}'...")
             raise Exception
         return code, output, error
+    
+    

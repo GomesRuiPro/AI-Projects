@@ -1,4 +1,4 @@
-from core.exception_handler import QuitRequestException
+from agents.exception_handler import QuitRequestException
 from tools.models.model import Model
 
 

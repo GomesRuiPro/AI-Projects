@@ -45,8 +45,12 @@ vlm:
 llm:
   models:
     conversation: # text generation/chatbots
-    - repository: None
-      name: llama3.2
+    - repository: meta-llama
+      name: Meta-Llama-3.1-8B-Instruct
+      is_local: False
+      is_enabled: False
+    - repository: openai-community
+      name: gpt2
       is_local: False
       is_enabled: True
     question_answer:
@@ -62,6 +66,9 @@ local:
     audio-bitrate: 128k
     video-codec: h264
     video-bitrate: 500k
+  cache:
+    path: data/cache/ 
+    ignore_warning: False # in case reload/reset the cache memory is called
 apis:
   hugging_face:
     token: YOUR_HUGGING_FACE_TOKEN

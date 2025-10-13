@@ -1,3 +1,4 @@
+# DEPRECATED = use youtube_api.py
 #!/usr/bin/env python3
 import os
 import sys

@@ -19,6 +19,7 @@ isodate
 pytz
 ffmpeg-python
 timm
+bs4
 
 langchain
 langchain-ollama

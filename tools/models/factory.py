@@ -3,6 +3,7 @@ from tools.models.object.microsoft.glip import Glip
 from tools.models.object.facebook.detr import Detr
 from tools.models.object.openai.clip import Clip
 from tools.models.question_answer.deepset.squad2 import Squad2
+from tools.models.conversation.openai.gpt2 import Gpt2
 from tools.models.model import Model
 from tools.models.fallback.userinput.user_input import UserInput
 from tools.models.fallback.donothing.do_nothing import DoNothing
@@ -96,6 +97,10 @@ class TextModelFactory(Factory):
 
 class ConversationFactory(TextModelFactory, ABC):
 
+    class ModelType(Enum):
+        OPENAI_GPT2 = 'gpt2'
+        META_LLAMA_31 = 'llama'
+        
     def __init__(self, config, token=None):
         super().__init__(config, token)
 
@@ -105,7 +110,11 @@ class ConversationFactory(TextModelFactory, ABC):
             return model_to_run
 
         # do reflection here
-        return None
+        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        if ConversationFactory.ModelType.OPENAI_GPT2.value in model_name.lower():
+            return Gpt2(model_to_run, self.token, model_name, pretrained, to_debug)
+        if ConversationFactory.ModelType.META_LLAMA_31.value in model_name.lower():
+            pass
     
 class QuestionAnswerFactory(TextModelFactory):
     

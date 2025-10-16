@@ -24,49 +24,7 @@ class Utility:
         else:
             # Single argument
             content = method_to_call(method_args)
-        return content
-    
-    @staticmethod
-    def list_of_dict_to_str(list_of_dicts):
-        return "\n".join([Utility.dict_to_str(d) for d in list_of_dicts])
-                             
-    @staticmethod
-    def dict_to_str(d):
-        return ', '.join(f"{key}: {value}" for key, value in d.items() if key)
-    
-    @staticmethod
-    def substring_from_char(s, char):
-        pos = s.find(char)
-
-        if pos != -1:
-            # Get substring after the character
-            substring = s[pos+1:]
-            return substring
-        else:
-            return s
-    
-    @staticmethod
-    def substring_until_char(s, char):
-        pos = s.find(char)
-        
-        if pos != -1:
-            return s[:pos]
-        else:
-            return s
-
-    @staticmethod
-    def find_json_from_text(text):
-        match = re.search(r'\{.*\}', text)
-        if match:
-            json_str = match.group()
-            try:
-                data = json.loads(json_str)
-                return data
-            except json.JSONDecodeError:
-                return None
-        else:
-            return None
-            
+        return content            
             
     @staticmethod
     def show_image(video_frame, model_results=None, label_map=None):
@@ -118,18 +76,43 @@ class Utility:
             print(f"Class {class_name} not found")
 
     @staticmethod
-    def format_list_tuples_to_string(list, columns_names, columns_metrics):
-        result = ""
-        for list_idx in range(len(list)):
-            result += "\n"
-            for column_idx in range(len(columns_names)):
-                result += f" {columns_names[column_idx]}: {list[list_idx][column_idx]}{columns_metrics[column_idx]}, "
-            result = result[:-2]
-        return result
-
-    @staticmethod
     def get_list_by_column(matrix, column_idx):
         return [row[column_idx] for row in matrix]
+    
+    # STRING #
+    
+    @staticmethod
+    def substring_from_char(s, char):
+        pos = s.find(char)
+
+        if pos != -1:
+            # Get substring after the character
+            substring = s[pos+1:]
+            return substring
+        else:
+            return s
+    
+    @staticmethod
+    def substring_until_char(s, char):
+        pos = s.find(char)
+        
+        if pos != -1:
+            return s[:pos]
+        else:
+            return s
+
+    @staticmethod
+    def find_json_from_text(text):
+        match = re.search(r'\{.*\}', text)
+        if match:
+            json_str = match.group()
+            try:
+                data = json.loads(json_str)
+                return data
+            except json.JSONDecodeError:
+                return None
+        else:
+            return None
 
     # DATE/TIME #
     
@@ -151,9 +134,74 @@ class Utility:
         # Parse ISO 8601 duration to timedelta
         td = isodate.parse_duration(duration)
         return int(td.total_seconds())
-            
-    # FILE #
     
+    # CONVERTERS #
+    
+    @staticmethod
+    def dict_values_to_string(input_dict):
+        values = input_dict.values()
+        string_values = [str(value) if value is not None else "" for value in values]
+        result = ','.join(string_values)
+        return result
+    
+    @staticmethod
+    def composite_to_dict(obj):
+        if isinstance(obj, dict):
+            return {k: Utility.composite_to_dict(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [Utility.composite_to_dict(item) for item in obj]
+        elif hasattr(obj, '__dict__'):
+            return Utility.composite_to_dict(vars(obj))
+        else:
+            return obj
+        
+    @staticmethod
+    def format_list_tuples_to_string(list, columns_names, columns_metrics):
+        result = ""
+        for list_idx in range(len(list)):
+            result += "\n"
+            for column_idx in range(len(columns_names)):
+                result += f" {columns_names[column_idx]}: {list[list_idx][column_idx]}{columns_metrics[column_idx]}, "
+            result = result[:-2]
+        return result
+    
+    @staticmethod
+    def class_attrs_to_dict(obj):
+        return {k: v for k, v in obj.__dict__.items() if v not in [None, [], {}, ()]}
+    
+    @staticmethod
+    def class_attrs_to_str(obj):
+        """
+        Returns
+        {
+            'attr1': '[1, 2, 3]',
+            'attr2': '42',
+            'attr3': '{\"child_attr1\": \"child_val1\"}',
+            'attr4': 'true'
+        }
+        """
+        return {
+            k: json.dumps(v) for k, v in obj.__dict__.items()
+            if v not in [None, [], {}, ()]
+        }
+    
+    @staticmethod
+    def list_of_dict_to_str(list_of_dicts):
+        """
+        Returns 
+                dict1.param1, dict1.param2
+                dict2.param1, dict2.param2
+                dict3.param1, dict3.param2
+        """
+        return "\n".join([Utility.dict_to_str(d) for d in list_of_dicts])
+                             
+    @staticmethod
+    def dict_to_str(d):
+        """
+        Returns dict1.param1, dict1.param2
+        """
+        return ', '.join(f"{key}: {value}" for key, value in d.items() if key)
+            
     @staticmethod
     def files_to_dict(folder_path):
         files_dict = {}
@@ -163,6 +211,8 @@ class Utility:
                 topic = Utility.substring_until_char(filename, ".")
                 files_dict[topic] = None
         return files_dict
+    
+    # FILE #
 
     @staticmethod
     def load_yaml():
@@ -177,6 +227,26 @@ class Utility:
         except yaml.YAMLError as e:
             print(f"Error loading YAML file '{yaml_file}': {e}")
             return None
+        
+    @staticmethod
+    def find_maps_with_key(data, target_key):
+        """
+        Recursively search for all dictionaries containing target_key.
+        Returns a list of all matching dictionaries.
+        """
+        results = []
+
+        if isinstance(data, dict):
+            if target_key in data:
+                results.append(data)
+            for v in data.values():
+                results.extend(Utility.find_maps_with_key(v, target_key))
+        elif isinstance(data, list):
+            for item in data:
+                results.extend(Utility.find_maps_with_key(item, target_key))
+        return results
+        
+        
 
     @staticmethod
     def rename_file(file_path, extra, is_to_rename=False):
@@ -293,6 +363,7 @@ class Utility:
         return files
 
     # SCRIPT #
+    
     @staticmethod
     def change_video_codec(video_path):
         video_converted_path = Utility.rename_file(video_path, "converted")
@@ -306,14 +377,38 @@ class Utility:
         return video_converted_path
     
     @staticmethod
-    def scrappe_url(domain, resource, ui_type, ui_label, max_results, cache_enabled=True):
-        args = ["--max_results=" + max_results]
+    def scrappe_url(webpage, max_results, cache_enabled=True, memento_enabled=False):
+        from innovation.FeedbackerAi.tools.sources.source import Webpage
+        
+        args = ["--max_results=" + str(max_results)]
         
         if cache_enabled:
             args.append("--cache_enabled")
+            if memento_enabled:
+                args.append("--memento_enabled")
+            
+        ui_component_parent = None
+        ui_component: Webpage.Component = webpage.ui_component
+        if ui_component.is_composite():
+            ui_component_parent: Webpage.Branch = webpage.ui_component
+            ui_component: Webpage.Leaf = ui_component_parent.child
+        else:
+            ui_component: Webpage.Leaf = webpage.ui_component
+            
+        ui_component_args = Utility.dict_values_to_string(ui_component.tags)      
+        
+        args.extend([
+                "--type_to_fetch=" + ui_component.type_to_fetch,
+                "--attr_to_fetch=" + ui_component.attr_to_fetch,
+                "--filter=" + ui_component_args             
+                ])
+        
+        if ui_component_parent:
+            ui_component_parent_args = Utility.dict_values_to_string(ui_component_parent.tags)    
+            args.append("--parent_filter=" + ui_component_parent_args)
             
         code, output, error = Utility.__call_executable_tool(
-            "local", 'web_scrapper', domain, resource, ui_type, ui_label, args)
+            "local", 'web_scrapper', webpage.domain, webpage.resource, args)
 
         return output
 

@@ -6,10 +6,10 @@ from agents.vlm import VLMGaming
 from agents.exception_handler import RetryException, QuitRequestException
 from tools.utilities import Utility
 import traceback
-from tools.local.memory.cache import Cache
+from tools.local.memory.cache import CacheClient
 
 # Init Cache
-Cache.init_cache()
+CacheClient.init_cache()
 # Load Configuration
 config = Utility.load_yaml()
 
@@ -89,8 +89,8 @@ def main():
     vlm_gaming = VLMGaming()
     llm_gaming = LLMGaming()
     
-    llm_gaming.start_model(with_conversation=True)
-    vlm_gaming.start_model(with_object=True, with_video_classification=True)
+    llm_gaming.start_model("with_conversation", "with_source_games")
+    vlm_gaming.start_model("with_object", "with_video_classification")
 
     while True:
         try:
@@ -103,10 +103,14 @@ def main():
             # Classify genre using VLM
             print("Classifying video...")
             genre = vlm_gaming.get_genre(video_filename_path)
+            
+            # Get popular games
+            popular_games = llm_gaming.get_popular_games(genre)
+            print(popular_games)
 
             # Get trends keywords
-            response = llm_gaming.get_trends(genre)
-            print(response)
+            # response = llm_gaming.get_trends(genre)
+            # print(response)
             
             # Extract features from video
             result = vlm_gaming.execute(video_filename_path)

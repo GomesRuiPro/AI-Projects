@@ -58,6 +58,7 @@ llm:
       name: roberta-base-squad2
       is_local: False
       is_enabled: True
+    translation: none
   use_model_finetuned: False
   device_debug: 1
 local:
@@ -66,6 +67,15 @@ local:
     audio-bitrate: 128k
     video-codec: h264
     video-bitrate: 500k
+  sources:
+    games:
+    - name: metacritic
+      is_enabled: True
+    trends: none
+    feedback:
+      reviews: none
+      comments: none
+      scores: none
   cache:
     path: data/cache/ 
     ignore_warning: False # in case reload/reset the cache memory is called

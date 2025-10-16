@@ -6,34 +6,37 @@ import numpy as np
 from abc import ABC, abstractmethod
 from tools.models.model import VideoFeatureModel, VideoModel, Model
 from tools.models.factory import EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory
+from agents.agent import Agent
 
 APIS_CONFIG = Utility.load_yaml()["apis"]
 VLM_CONFIG = Utility.load_yaml()["vlm"]
 
 
-class VLMGaming():
+class VLMGaming(Agent):
 
-    models = []
     clip_duration_seconds = None
     num_frames_to_read = None
 
     def __init__(self):
-        pass
+        super().__init__()
 
-    def start_model(self, with_object=False, with_environment=False, with_movement=False, with_video_classification=False):
-        object_detection_model = ObjectDetection.create() if with_object else None
-        environment_model = Environment.create() if with_environment else None
-        movement_model = Movement.create() if with_movement else None
-        video_classification_model = VideoClassification.create(
-        ) if with_video_classification else None
-        self.models = {'object': object_detection_model, 'movement': movement_model,
-                       'environment': environment_model, 'video_classification': video_classification_model}
+    def start_model(self, *with_features):
+        self.models = {
+            "object": None,
+            "environment": None,
+            "movement": None,
+            "video_classification": None,
+        }
 
-    def get_model(self, model_type):
-        return self.models[model_type]
-
-    def get_models(self):
-        return self.models
+        for with_feature in with_features:
+            if with_feature == "with_object":
+                self.models["object"] = ObjectDetection.create()
+            elif with_feature == "with_environment":
+                self.models["environment"] = Environment.create()
+            elif with_feature == "with_movement":
+                self.models["movement"] = Movement.create()
+            elif with_feature == "with_video_classification":
+                self.models["video_classification"] = VideoClassification.create()
 
     def get_extract_features_models(self):
         extract_features_models = []

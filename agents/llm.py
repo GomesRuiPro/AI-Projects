@@ -1,30 +1,52 @@
 
 from tools.utilities import Utility
 from abc import ABC, abstractmethod
+from datetime import datetime
 from tools.models.model import Model, TextModel
+from tools.sources.external.metacritic import MetacriticClient
 from tools.models.factory import ConversationFactory, QuestionAnswerFactory
+from agents.agent import Agent
 
 
 APIS_CONFIG = Utility.load_yaml()["apis"]
+TOOLS_CONFIG = Utility.load_yaml()["local"]
 LLM_CONFIG = Utility.load_yaml()["llm"]
 
-class LLMGaming:
-    models = []
+class LLMGaming(Agent):
     
     def __init__(self):
-        pass
+        super().__init__()
     
-    def start_model(self, with_conversation=False, with_question_answer=False):
-        conversation_model = Conversation.create() if with_conversation else None
-        question_answer_model = QuestionAnswer.create() if with_question_answer else None
-        self.models = {'conversation': conversation_model, 'question_answer': question_answer_model}
+    def start_model(self, *with_features):
+        self.models = {
+            "conversation": None,
+            "question_answer": None,
+            "translation": None
+        }
+        self.source_clients = {
+            "games": None,
+            "trends": None,
+            "feedback": [None]
+        }
         
-    def get_model(self, model_type):
-        return self.models[model_type]
+        for with_feature in with_features:
+            if "model" in with_feature:
+                if with_feature == "with_conversation":
+                    self.models["conversation"] = Conversation.create()
+                elif with_feature == "with_question_answer":
+                    self.models["question_answer"] = QuestionAnswer.create()
+                elif with_feature == "with_translation":
+                    self.models["translation"] = None
+            elif "source" in with_feature:
+                if with_feature == "with_source_games":
+                    self.source_clients["games"] = GamesSource.create()
 
-    def get_models(self):
-        return self.models
+    def get_source_client(self, source_type):
+        return self.source_clients[source_type]
 
+    def get_source_clients(self):
+        return self.source_clients
+    
     # def get_trends(self, genre):
     #     context = f"I am trying to understand the player behavior and how it is moving torwards the future of {genre} videogames. I would like to know what players comment in social mediawould like to see more and less for future videogames."
     #     question = f"What are the currently most hated features and the most desired features in this {genre}?"
@@ -36,13 +58,18 @@ class LLMGaming:
     #     model = self.get_model("conversation")
     #     return model.execute(question)
     
-    def get_popular_games(self, genre):
-        Utility.web_scrapping()
-    def get_trends(self, genre):
-        query = f"Best {genre} games of this month"
+    # def get_trends(self, genre):
+    #     query = f"Best {genre} games of this month"
         
         
-        Utility.get_video_comments("")
+    #     Utility.get_video_comments("")
+    
+    def get_popular_games(self, genre, max_results=10):
+        client: MetacriticClient = self.get_source_client("games")
+        current_year = datetime.now().year
+        return client.get_games(genre, current_year, current_year, max_results)
+            
+        
 class ModelClient(ABC):
 
     model = None
@@ -73,6 +100,24 @@ class QuestionAnswer(ModelClient):
         ModelClient.model = questionAnswerFactory.create(
             LLM_CONFIG['use_model_finetuned'], LLM_CONFIG['device_debug'])
         return ModelClient.model    
+    
+class SourceClient(ABC):
+    
+    source = None
+
+    @abstractmethod
+    def create():
+        pass
+    
+class GamesSource(SourceClient):
+
+    # Making the method simple to not focus on fallback or any factory. it moves directly to the intended source,
+    # but this should be updated in the future to dynamically should one or multiple source_clients
+    @staticmethod
+    def create():
+        config = TOOLS_CONFIG['sources']['games']
+        SourceClient.source  = MetacriticClient(config)
+        return SourceClient.source    
 
 
     # def generate_search_queries(self, query, number_of_results=1):

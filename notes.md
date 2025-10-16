@@ -228,13 +228,16 @@ Feature implemented:
 - install the model coming from hugging face or - DOEN
 - check and filter by confidence - DONE
 - Show image with squares for object detection - DONE
-
+- Caching
+- Web scrapping
+- Sources linked with LLM
 - restructure model class with fallback (factory, iterator and strategy DPs) - DONE
 
 
 
 TODO features:
-- fix issue where openai is ready Xth frame at a time. it should read all frames but then preselected by the model after
+- Figure out how to move from a composite object > dict  and send the values to the web scrapper tool (issue in Utilities)
+- fix issue where openai is reading Xth frame at a time. it should read all frames but then preselected by the model after
 - Connect non local LLM get Trends with VLM: get from source > extract keywords and format answer > convert answer to features > ask VLM to look for these features > show results
 
 

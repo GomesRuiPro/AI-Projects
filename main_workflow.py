@@ -113,7 +113,7 @@ def main():
             # print(response)
             
             # Extract features from video
-            result = vlm_gaming.execute(video_filename_path)
+            # result = vlm_gaming.execute(video_filename_path)
 
 
             # Ask if user wants to continue or ask something else

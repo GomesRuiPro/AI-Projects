@@ -31,6 +31,10 @@ class CacheClient(ABC):
             cache = CacheClient.__Cache(topic)
             cache.create_content(topic)
             CacheClient.MEMORY[topic] = cache
+            
+    @staticmethod
+    def get_cached_data(topic):
+        return CacheClient.__get_data(topic)
     
     @staticmethod
     def caching(topic, method_to_call=None, method_args=None, memento_enabled=False):
@@ -61,14 +65,23 @@ class CacheClient(ABC):
                         return CacheClient.__set_data(topic, content)
                 # If no method is specified - return empty
                 return None
+
         except Exception as ex:
             print(f"Caching was not possible: {ex} Skipping...")
+    
+    @staticmethod
+    def __get_history(topic):
+        if topic in CacheClient.MEMORY:
+            if CacheClient.MEMORY[topic]:
+                return CacheClient.MEMORY[topic].load_content()
+            return None
+        return None
     
     @staticmethod    
     def __get_data(topic):
         if topic in CacheClient.MEMORY:
             if CacheClient.MEMORY[topic]:
-                return CacheClient.MEMORY[topic].load_content()
+                return CacheClient.MEMORY[topic].load_content()[0]
             return None
         return None
             
@@ -84,7 +97,7 @@ class CacheClient(ABC):
         #     cache = CacheClient.__Cache(topic)
         #     cache.create_content(data)
         #     CacheClient.MEMORY[topic] = cache
-        return CacheClient.MEMORY[topic].load_content()
+        return CacheClient.__get_history(topic)
 
     @staticmethod
     def __set_data(topic, data):
@@ -100,7 +113,7 @@ class CacheClient(ABC):
             cache = CacheClient.__Cache(topic)
             cache.create_content(data)
             CacheClient.MEMORY[topic] = cache
-        return CacheClient.MEMORY[topic].load_content()
+        return CacheClient.__get_data(topic)
     
     class __Cache:
         

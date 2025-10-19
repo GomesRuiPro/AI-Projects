@@ -76,7 +76,7 @@ class Webpage(Source, ABC):
         
     class Leaf(Component):
         
-        def __init__(self, attr_to_fetch, type_to_fetch="div", _class=None, _id=None, _type=None, _name=None):
+        def __init__(self, attr_to_fetch="value", type_to_fetch="div", _class=None, _id=None, _type=None, _name=None):
             self.attr_to_fetch = attr_to_fetch
             self.type_to_fetch = type_to_fetch
             self.tags = {

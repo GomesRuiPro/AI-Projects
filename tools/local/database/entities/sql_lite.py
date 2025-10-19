@@ -6,9 +6,9 @@ from innovation.FeedbackerAi.tools.utilities import Utility
 config = Utility.load_yaml()["local"]["database"]["sqlite3"]
 
 class SQL_LITE(SQL_DB):
-    def __init__(self):
+    def __init__(self, db_path):
         super().__init__(config, "sqlite3")
-        self.conn = sqlite3.connect()
+        self.conn = sqlite3.connect(f"{db_path}{config['storage']}")
         self.cursor = self.conn.cursor()
 
     def create(self, table_name, columns):

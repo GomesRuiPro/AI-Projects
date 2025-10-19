@@ -1,12 +1,12 @@
 import yaml
 import os
-import subprocess
 import isodate
 from datetime import datetime, timezone
 import cv2
 import numpy as np
 import re
 import json
+import ast
 
 class Utility:
     
@@ -101,6 +101,10 @@ class Utility:
         else:
             return s
 
+    @staticmethod
+    def substring_between_strings(s, before, after):
+        return Utility.substring_until_char(Utility.substring_from_char(s, before), after)
+    
     @staticmethod
     def find_json_from_text(text):
         match = re.search(r'\{.*\}', text)
@@ -201,7 +205,22 @@ class Utility:
         Returns dict1.param1, dict1.param2
         """
         return ', '.join(f"{key}: {value}" for key, value in d.items() if key)
-            
+    
+    @staticmethod
+    def str_to_dict(s):
+        # Use regex to extract key and value
+        match = re.match(r"(\w+):\s*(\[.*\])", s)
+
+        if match:
+            key = match.group(1)
+            list_str = match.group(2)
+            # Convert string to list
+            value_list = ast.literal_eval(list_str)
+            # Create dictionary
+            return {key: value_list}
+        else:
+            raise Exception("String format is not as expected.")
+                    
     @staticmethod
     def files_to_dict(folder_path):
         files_dict = {}
@@ -318,7 +337,7 @@ class Utility:
             raise Exception(f"Error appending to file: {e}")
     
     @staticmethod
-    def read_data_from_file(file_path):
+    def read_data_from_file(file_path, ignore_timetamps=True):
         """
         Reads data from a file.
 
@@ -328,13 +347,26 @@ class Utility:
         Returns:
             The contents of the file as a string.
         """
+        timestamp_pattern = r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+        filtered_lines = []
         try:
             with open(file_path, 'r') as f:
-                data = f.read()
-                return data
+                if not ignore_timetamps:
+                    return [line.rstrip('\n') for line in f]
+                for line in f:
+                    if re.search(timestamp_pattern, line):
+                        continue  # Skip lines with timestamp
+                    filtered_lines.append(line.rstrip('\n'))
+                return filtered_lines
         except FileNotFoundError:
             print(f"File not found: {file_path}")
             return None
+        
+    @staticmethod
+    def read_json_from_file(file_path):
+        file_lines = Utility.read_data_from_file(file_path)
+        return [json.loads(file_line) for file_line in file_lines]
+            
     
     @staticmethod
     def does_file_exist(file_path):
@@ -360,103 +392,5 @@ class Utility:
                             files.append((filename_path, class_idx))
                             break
                 break
-        return files
-
-    # SCRIPT #
-    
-    @staticmethod
-    def change_video_codec(video_path):
-        video_converted_path = Utility.rename_file(video_path, "converted")
-        code, output, error = Utility.__call_executable_tool(
-            "local", 'video_codec_converter', video_path, [
-                "--output_path=" + video_converted_path]
-        )
-
-        if code != 0:
-            video_converted_path = video_path
-        return video_converted_path
-    
-    @staticmethod
-    def scrappe_url(webpage, max_results, cache_enabled=True, memento_enabled=False):
-        from innovation.FeedbackerAi.tools.sources.source import Webpage
-        
-        args = ["--max_results=" + str(max_results)]
-        
-        if cache_enabled:
-            args.append("--cache_enabled")
-            if memento_enabled:
-                args.append("--memento_enabled")
-            
-        ui_component_parent = None
-        ui_component: Webpage.Component = webpage.ui_component
-        if ui_component.is_composite():
-            ui_component_parent: Webpage.Branch = webpage.ui_component
-            ui_component: Webpage.Leaf = ui_component_parent.child
-        else:
-            ui_component: Webpage.Leaf = webpage.ui_component
-            
-        ui_component_args = Utility.dict_values_to_string(ui_component.tags)      
-        
-        args.extend([
-                "--type_to_fetch=" + ui_component.type_to_fetch,
-                "--attr_to_fetch=" + ui_component.attr_to_fetch,
-                "--filter=" + ui_component_args             
-                ])
-        
-        if ui_component_parent:
-            ui_component_parent_args = Utility.dict_values_to_string(ui_component_parent.tags)    
-            args.append("--parent_filter=" + ui_component_parent_args)
-            
-        code, output, error = Utility.__call_executable_tool(
-            "local", 'web_scrapper', webpage.domain, webpage.resource, args)
-
-        return output
-
-    @staticmethod
-    def download_video(searchText, clip_resolution, clip_duration_seconds, games_per_genre_length, clip_uploaded_days_ago, output_path):
-        code, output, error = Utility.__call_executable_tool("apis",
-                                                             'youtube_api', "download", searchText,
-                                                             ["--resolution=" + clip_resolution,
-                                                              f"--max_results=" +
-                                                              str(games_per_genre_length),
-                                                                 "--max_duration=" +
-                                                              str(clip_duration_seconds),
-                                                                 "--uploaded_days_ago=" +
-                                                              str(clip_uploaded_days_ago),
-                                                                 "--output_path=" + output_path]
-                                                             )
-    
-    @staticmethod
-    def get_video_comments(searchText, clip_resolution, clip_duration_seconds, games_per_genre_length, clip_uploaded_days_ago, output_path):
-        code, output, error = Utility.__call_executable_tool("apis", 'youtube_api', "comments", searchText, [f"--max_results="])
-
-    @staticmethod
-    def __call_executable_tool(parent_folder, name, command="", input="", args=[]):
-        exeutable_files = Utility.get_list_files(
-            parent_folder, name, root_dir=os.path.join(os.getcwd(), "tools"))
-        if exeutable_files is not None and len(exeutable_files) == 1:
-            # Build the command list
-            command = ['python3', exeutable_files[0][0], command, input] + args
-            # Run the subprocess
-            try:
-                result = subprocess.run(
-                    command, capture_output=True, text=True)
-                output = result.stdout
-                error = result.stderr
-                code = result.returncode
-            except subprocess.CalledProcessError as e:
-                raise Exception(
-                    f"Failed to run script '{exeutable_files[0]} {input}': {e}")
-        else:
-            raise Exception(
-                f"No tool was found with the name '{name}! Exiting...")
-
-        print(output if code == 0 else error)
-        if code == 2:
-            print(f"Skipping '{name} {input}'...")
-        if code == 1:
-            print(f"Exiting '{name} {input}'...")
-            raise Exception
-        return code, output, error
-    
+        return files    
     

@@ -76,6 +76,10 @@ local:
       reviews: none
       comments: none
       scores: none
+  database:
+    path: data/database/
+    sqlite3:
+      storage: sqlite_player_feedback.db
   cache:
     path: data/cache/ 
     ignore_warning: False # in case reload/reset the cache memory is called

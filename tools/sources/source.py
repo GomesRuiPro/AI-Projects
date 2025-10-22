@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
+from typing import Optional, Dict, Any
 
-class Source(ABC):
-    pass
+class Source(ABC): # Used for fallback models
+    
+    def __init__(self):  
+        pass
 
 class Database(Source, ABC):
-    pass
+
+    def __init__(self):
+        super().__init__()
 
 class Webpage(Source, ABC):
     

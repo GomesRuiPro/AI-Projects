@@ -1,8 +1,9 @@
 import torch
 from transformers import DetrForObjectDetection, DetrImageProcessor
 from torchvision import transforms
-from tools.models.model import VideoFeatureModel
+from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel
 from PIL import Image
+from typing import Optional, Dict, Any
 
 
 class Glip(VideoFeatureModel):

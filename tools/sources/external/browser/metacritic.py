@@ -1,10 +1,11 @@
 import os
 from innovation.FeedbackerAi.tools.sources.source import Webpage
-from innovation.FeedbackerAi.tools.sources.external.entities.platform import PLATFORM
-from innovation.FeedbackerAi.tools.sources.external.dtos.source import SOURCE_TYPE
-from innovation.FeedbackerAi.tools.sources.external.dtos.game_genre import GENRE, SUBGENRE
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.entities.platform import PLATFORM
+from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
+from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, SUBGENRE
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
+from typing import Optional, Dict, Any
 import math
 from abc import ABC
 import datetime
@@ -22,13 +23,14 @@ class MetacriticClient():
     available_platforms = [PLATFORM.PC, PLATFORM.PS5, PLATFORM.XBOX_X]
     
 
-    def __new__(cls, config):
+    def __new__(cls, config, to_debug):
         if cls._instance is None:
             cls._instance = super(MetacriticClient, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, config):
+    def __init__(self, config, to_debug):
         self.config = config
+        self.to_debug = to_debug
         self.webpage = Webpage(MetacriticClient.DOMAIN)
         
     def get_genres(self):

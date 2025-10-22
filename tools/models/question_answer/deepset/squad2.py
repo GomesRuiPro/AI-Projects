@@ -3,7 +3,8 @@ import torch
 from torchvision import transforms
 from PIL import Image
 from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline
-from tools.models.model import TextModel
+from innovation.FeedbackerAi.tools.models.model import TextModel
+from typing import Optional, Dict, Any
 
 class Squad2(TextModel):
 

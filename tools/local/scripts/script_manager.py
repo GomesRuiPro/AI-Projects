@@ -1,7 +1,8 @@
 from abc import ABC
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.local.scripts.entities.cached_script import CachedScript
 from innovation.FeedbackerAi.tools.local.scripts.entities.script import Script
+from typing import Optional, Dict, Any
 
 class ScriptManager(ABC):
     
@@ -13,7 +14,7 @@ class ScriptManager(ABC):
         
         video_converted_path = Utility.rename_file(video_path, "converted")
 
-        script = Script("local", "video_codec_converter")
+        script = Script("internal", "video_codec_converter")
         
         inputs = [video_path]
         args = ["--output_path=" + video_converted_path]
@@ -49,12 +50,12 @@ class ScriptManager(ABC):
             ui_component_parent_args = Utility.dict_values_to_string(ui_component_parent.tags)    
             args.append("--parent_filter=" + ui_component_parent_args)
             
-        script = Script("local", "web_scrapper")      
+        script = Script("internal", "web_scrapper")      
         if ScriptManager.cache_enabled:
             main_topic = Utility.substring_until_char(webpage.domain, ".")
             sub_topic = webpage.resource.replace("/", "_")
             topic = f"{main_topic}_{sub_topic}"
-            script = CachedScript("local", "web_scrapper", topic, ScriptManager.memento_enabled)
+            script = CachedScript("internal", "web_scrapper", topic, ScriptManager.memento_enabled)
         inputs = [webpage.domain, webpage.resource]
         script.execute("", inputs, args)
         

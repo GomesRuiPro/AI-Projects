@@ -2,11 +2,12 @@
 import os
 import argparse
 import sys
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 from enum import Enum
 import requests
 from bs4 import BeautifulSoup
 import json
+from typing import Optional, Dict, Any
 
 BROWSER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
 

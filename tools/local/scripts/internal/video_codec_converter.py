@@ -2,8 +2,9 @@
 import os
 import argparse
 import sys
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 import ffmpeg
+from typing import Optional, Dict, Any
 
 # Load configuration
 config = Utility.load_yaml()["local"]["ffmpeg"]

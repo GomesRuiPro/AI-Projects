@@ -1,12 +1,12 @@
 import re
 import os
 import sys
-from agents.llm import LLMGaming
-from agents.vlm import VLMGaming
-from agents.exception_handler import RetryException, QuitRequestException
-from tools.utilities import Utility
+from innovation.FeedbackerAi.agents.llm import LLMGaming
+from innovation.FeedbackerAi.agents.vlm import VLMGaming
+from innovation.FeedbackerAi.agents.exception_handler import RetryException, QuitRequestException
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 import traceback
-from tools.local.memory.cache import CacheClient
+from innovation.FeedbackerAi.tools.local.memory.cache import CacheClient
 
 # Init Cache
 CacheClient.init_cache()
@@ -39,7 +39,7 @@ question = None
 video_filename = None
 
 
-def hello(template):
+def hello(template, to_continue=True):
     video_filename = config["main"]['file_game']
     question = None
 
@@ -52,7 +52,10 @@ def hello(template):
 
         elif len(params) == 1:
             if params[0] == 'q':
-                raise QuitRequestException
+                if to_continue:
+                    raise QuitRequestException
+                goodbye()
+                sys.exit(0)
             else:
                 video_filename = params[0] if params[0] else config["main"]['file_game']
         else:
@@ -84,13 +87,14 @@ def parse_user_input(input_str):
 def main():
     global question, force_retrain, video_filename, force_download_videos
 
-    question, video_filename = hello(GREETING_TEMPLATE)
-    use_model_finetuned = config["vlm"]["use_model_finetuned"]
-    vlm_gaming = VLMGaming()
-    llm_gaming = LLMGaming()
+    question, video_filename = hello(GREETING_TEMPLATE, to_continue=False)
+
+    workflow_config = config['main']['workflow']
+    vlm_gaming = VLMGaming(workflow_config)
+    llm_gaming = LLMGaming(workflow_config)
     
-    llm_gaming.start_model("with_conversation", "with_source_games")
-    vlm_gaming.start_model("with_object", "with_video_classification")
+    # llm_gaming.start_model("with_conversation", "with_source_games")
+    # vlm_gaming.start_model("with_object", "with_video_classification")
 
     while True:
         try:

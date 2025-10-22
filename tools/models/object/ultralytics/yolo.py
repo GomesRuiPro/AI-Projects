@@ -1,6 +1,7 @@
 from ultralytics import YOLO
 import torch.hub as hub
-from tools.models.model import VideoFeatureModel
+from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel
+from typing import Optional, Dict, Any
 
 
 class Yolo(VideoFeatureModel):

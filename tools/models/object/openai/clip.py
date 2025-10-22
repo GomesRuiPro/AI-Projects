@@ -3,7 +3,8 @@ import torch
 from torchvision import transforms
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel, AutoConfig
-from tools.models.model import VideoFeatureModel
+from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel
+from typing import Optional, Dict, Any
 
 class Clip(VideoFeatureModel):
     

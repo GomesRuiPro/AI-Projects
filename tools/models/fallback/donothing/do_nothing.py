@@ -1,4 +1,5 @@
-from tools.models.model import Model
+from innovation.FeedbackerAi.tools.models.model import Model
+from typing import Optional, Dict, Any
 
 
 class DoNothing(Model):

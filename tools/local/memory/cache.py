@@ -1,7 +1,8 @@
 import os
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 from abc import ABC
 import datetime
+from typing import Optional, Dict, Any
 
 # Load configuration
 config = Utility.load_yaml()["local"]["cache"]
@@ -38,6 +39,8 @@ class CacheClient(ABC):
     
     @staticmethod
     def caching(topic, method_to_call=None, method_args=None, memento_enabled=False):
+        
+        cached_data = None
         try:
             if not CacheClient.MEMORY:
                 CacheClient.init_cache()
@@ -68,6 +71,8 @@ class CacheClient(ABC):
 
         except Exception as ex:
             print(f"Caching was not possible: {ex} Skipping...")
+            
+        return cached_data
     
     @staticmethod
     def __get_history(topic):

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
+from typing import Optional, Dict, Any
 import torch
 import os
 
@@ -11,7 +12,7 @@ class Model(ABC):
     def __init__(self, config, model_name):  # Used for fallback models
         self.model_name = model_name
         self.config = config
-
+        
 class TextModel(Model, ABC): # Used for text models
     def __init__(self, config, model_name, pretrained, to_debug):
         super().__init__(config, model_name)

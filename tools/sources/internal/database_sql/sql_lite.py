@@ -1,14 +1,12 @@
 import sqlite3
-from innovation.FeedbackerAi.tools.local.database.sqldb import SQL_DB
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.sources.internal.database_sql.sqldb import SQLDb
+from innovation.FeedbackerAi.tools.local.utilities import Utility
+from typing import Optional, Dict, Any
 
-# Load configuration
-config = Utility.load_yaml()["local"]["database"]["sqlite3"]
-
-class SQL_LITE(SQL_DB):
-    def __init__(self, db_path):
-        super().__init__(config, "sqlite3")
-        self.conn = sqlite3.connect(f"{db_path}{config['storage']}")
+class SQLite(SQLDb):
+    def __init__(self, config, db_path, to_debug):
+        super().__init__(config, "sqlite3", to_debug)
+        self.conn = sqlite3.connect(f"{db_path}{self.config['storage']}")
         self.cursor = self.conn.cursor()
 
     def create(self, table_name, columns):

@@ -1,49 +1,50 @@
 import torch
 import cv2
-from tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 import time
 import numpy as np
 from abc import ABC, abstractmethod
-from tools.models.model import VideoFeatureModel, VideoModel, Model
-from tools.models.factory import EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory
-from agents.agent import Agent
+from innovation.FeedbackerAi.agents.tools_client import ToolsClient
+from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel, VideoModel, Model
+from innovation.FeedbackerAi.agents.agent import Agent
+from innovation.FeedbackerAi.agents.tools_client import Operation, ExecutionMode
+from typing import Optional, Dict, Any
 
-APIS_CONFIG = Utility.load_yaml()["apis"]
 VLM_CONFIG = Utility.load_yaml()["vlm"]
-
 
 class VLMGaming(Agent):
 
     clip_duration_seconds = None
     num_frames_to_read = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, workflow_config):
+        super().__init__(workflow_config, VLM_CONFIG)
 
-    def start_model(self, *with_features):
-        self.models = {
-            "object": None,
-            "environment": None,
-            "movement": None,
-            "video_classification": None,
-        }
+    # def start_model(self, *with_features):
+    #     self.models = {
+    #         "object": None,
+    #         "environment": None,
+    #         "movement": None,
+    #         "video_classification": None,
+    #     }
 
-        for with_feature in with_features:
-            if with_feature == "with_object":
-                self.models["object"] = ObjectDetection.create()
-            elif with_feature == "with_environment":
-                self.models["environment"] = Environment.create()
-            elif with_feature == "with_movement":
-                self.models["movement"] = Movement.create()
-            elif with_feature == "with_video_classification":
-                self.models["video_classification"] = VideoClassification.create()
+    #     for with_feature in with_features:
+    #         if with_feature == "with_object":
+    #             self.models["object"] = ObjectDetection.create()
+    #         elif with_feature == "with_environment":
+    #             self.models["environment"] = Environment.create()
+    #         elif with_feature == "with_movement":
+    #             self.models["movement"] = Movement.create()
+    #         elif with_feature == "with_video_classification":
+    #             self.models["video_classification"] = VideoClassification.create()
 
-    def get_extract_features_models(self):
-        extract_features_models = []
-        for name, model in self.models.items():
-            if isinstance(model, VideoFeatureModel):
-                extract_features_models.append(model)
-        return extract_features_models
+    # def get_extract_features_models(self):
+    #     self.tools_client.create(Operation.)
+    #     extract_features_models = []
+    #     for name, model in self.models.items():
+    #         if isinstance(model, VideoFeatureModel):
+    #             extract_features_models.append(model)
+    #     return extract_features_models
 
     def __load_video(self, video_converted_path):
         # Read the video using OpenCV
@@ -99,12 +100,19 @@ class VLMGaming(Agent):
         return frames
 
     def get_genre(self, video_path):
-        model = self.get_model("video_classification")
+        self.tools_client.create(Operation.GET_GENRE)
+        model_execution_mode = self.tools_client.models["execution_mode"]
+        models = self.tools_client.models["entities"]
 
-        if isinstance(model, VideoModel):
-            video_frames = self.__load_video(video_path)
-            model.set_video(video_frames)
-
+        if not models:
+            return None
+                
+        model = models[0]
+        if model_execution_mode == ExecutionMode.FALLBACK:
+            return model.execute()
+        
+        video_frames = self.__load_video(video_path)
+        model.set_video(video_frames)
         return model.execute()
 
     def execute(self, video_path):
@@ -122,49 +130,3 @@ class VLMGaming(Agent):
                 'features': features
             })
         return result
-
-
-class ModelClient(ABC):
-
-    model = None
-
-    @abstractmethod
-    def create():
-        pass
-
-
-class Movement(ModelClient):
-
-    @staticmethod
-    def create():
-        config = VLM_CONFIG['models']['movement']
-
-
-class ObjectDetection(ModelClient):
-
-    @staticmethod
-    def create():
-        config = VLM_CONFIG['models']['object']
-        objectFactory = ObjectFactory(
-            config, APIS_CONFIG['hugging_face']['token'])
-        ModelClient.model = objectFactory.create(
-            VLM_CONFIG['device_type'], VLM_CONFIG['use_model_finetuned'], VLM_CONFIG['device_debug'])
-        return ModelClient.model
-
-
-class Environment(ModelClient):
-
-    @staticmethod
-    def create():
-        config = VLM_CONFIG['models']['environment']
-
-
-class VideoClassification(ModelClient):
-
-    @staticmethod
-    def create():
-        config = VLM_CONFIG['models']['video_classification']
-        videoClassificationFactory = VideoClassificationFactory(config)
-        ModelClient.model = videoClassificationFactory.create(
-            VLM_CONFIG['device_type'], VLM_CONFIG['use_model_finetuned'], VLM_CONFIG['device_debug'])
-        return ModelClient.model

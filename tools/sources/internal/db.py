@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
+from typing import Optional, Dict, Any
 
 class Database(ABC):
     
-    def __init__(self, config):
+    def __init__(self, config, to_debug):
         self.config = config
+        self.to_debug = to_debug
         
     @abstractmethod
     def create(self, table_name, columns):

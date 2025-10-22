@@ -7,6 +7,9 @@ import numpy as np
 import re
 import json
 import ast
+from typing import Optional, Dict, Any
+import importlib
+import inspect
 
 class Utility:
     
@@ -117,6 +120,29 @@ class Utility:
                 return None
         else:
             return None
+        
+    @staticmethod
+    def to_camel_case(s):
+        """
+        Examples:
+        print(to_camel_case("hello_world"))        # helloWorld
+        print(to_camel_case("convert to Camel Case"))  # convertToCamelCase
+        print(to_camel_case("this-is-a-test"))     # thisIsATest
+        """
+        
+        words = re.split(r'[\s_\-]+', s)
+        return words[0].lower() + ''.join(word.capitalize() for word in words[1:])
+    
+    @staticmethod
+    def to_pascal_case(s):
+        """
+        Examples:
+        print(to_pascal_case("hello world"))          # HelloWorld
+        print(to_pascal_case("convert_to-pascal case"))  # ConvertToPascalCase
+        print(to_pascal_case("this-is-a-test"))      # ThisIsATest
+        """
+        words = re.split(r'[\s_\-]+', s)
+        return ''.join(word.capitalize() for word in words)
 
     # DATE/TIME #
     
@@ -394,3 +420,31 @@ class Utility:
                 break
         return files    
     
+    # REFLECTION #        
+    @staticmethod
+    def create_class(module_name: str, class_name: str) -> object:
+        # Import the module
+        module = importlib.import_module(module_name)
+
+        # Get the class from the module
+        cls = getattr(module, class_name, None)
+        
+        if cls is not None:
+            return cls
+        else:
+            raise Exception(f"Reflection failed - Module '{module_name}' Class '{class_name}' not found.")
+        
+    @staticmethod
+    def create_instance(module_name: str, class_name: str) -> object:
+        # Import the module
+        module = importlib.import_module(module_name)
+
+        # Get the class from the module
+        cls = getattr(module, class_name, None)
+        
+        if cls is not None:
+            return cls()
+        else:
+            raise Exception(f"Reflection failed - Module '{module_name}' Class '{class_name}' not found.")
+        
+

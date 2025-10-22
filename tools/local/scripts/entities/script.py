@@ -1,6 +1,7 @@
 import subprocess
 import os
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
+from typing import Optional, Dict, Any
 
 class Script:
     
@@ -8,13 +9,15 @@ class Script:
     error = None
     output = None
     
+    config = Utility.load_yaml()["local"]["scripts"]
+    
     def __init__(self, parent_folder, name):
         self.parent_folder = parent_folder
         self.name = name
     
     def execute(self, command="", inputs=[], args=[]):
         exeutable_files = Utility.get_list_files(
-            self.parent_folder, self.name, root_dir=os.path.join(os.getcwd(), "tools"))
+            self.parent_folder, self.name, root_dir=os.path.join(os.getcwd(), self.config["path"]))
         if exeutable_files is not None and len(exeutable_files) == 1:
             # Build the command list
             # inputs_str = " ".join([str(input) for input in inputs])

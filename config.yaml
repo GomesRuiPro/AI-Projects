@@ -1,38 +1,41 @@
 main:
   file_game: game1.mp4
-  bot:
-    personality: ""  # Available: [happy, sad, frustrated, optimistic]
-    age_group: ""  # Available: [young > teen > adult > old]
-    location: ""  # Available: [Region > Country > Continent]
-    gender: ""  # Available: [female, male]
-vlm: 
-  models:
-    environment:
-    - repository: ultralytics
-      name: torch-hub-yolov5s
-      is_local: False
-      is_enabled: False
-    movement:
-    - repository: none
-      name: none
-      is_local: False
-      is_enabled: False
-    object:
-    - repository: facebook
-      name: detr-resnet-50
-      is_local: False
-      is_enabled: False
-      confidence_threshold: 0.5
-    - repository: openai
-      name: clip-vit-base-patch32
-      is_local: False
-      is_enabled: True
-      confidence_threshold: 0.5
-    video_classification:
-    - repository: pytorch
-      name: x3d-xs
-      is_local: False
-      is_enabled: False
+  # New design pattern = Abstract factory that allows to choose which models, sources and audience to use for each step.
+  # NOTE: [] = empty = 'none' = skips; fallback = triggers fallback; [data] = triggers each entity named data
+  workflow:
+    get-genre:
+      models: fallback
+      sources: none
+      player: none
+    get-games:
+      models: none
+      sources: ['metacritic']
+      player: none
+    get-reviews:
+      models: none
+      sources: ['metacritic']
+      player: none
+    do-sentiment-analysis:
+      models: none
+      sources: none
+      player: none
+    do-summarization:
+      models: none
+      sources: none
+      player: none
+    extract-video-object-detection-features:
+      models: none
+      sources: none
+      player: none
+    extract-video-environment-features:
+      models: none
+      sources: none
+      player: none
+    extract-video-movement-features:
+      models: none
+      sources: none
+      player: none
+vlm:
   use_model_finetuned: False
   testing_path: data/testing/visual/genres
   clip_resolution: 360x640
@@ -43,51 +46,95 @@ vlm:
   device_type: cuda:0 # <device hardware accelerator>:<GPU index> (nvidia)
   device_debug: 1
 llm:
-  models:
-    conversation: # text generation/chatbots
-    - repository: meta-llama
-      name: Meta-Llama-3.1-8B-Instruct
-      is_local: False
-      is_enabled: False
-    - repository: openai-community
-      name: gpt2
-      is_local: False
-      is_enabled: True
-    question_answer:
-    - repository: deepset
-      name: roberta-base-squad2
-      is_local: False
-      is_enabled: True
-    translation: none
   use_model_finetuned: False
   device_debug: 1
 local:
-  ffmpeg:
-    audio-codec: aac
-    audio-bitrate: 128k
-    video-codec: h264
-    video-bitrate: 500k
-  sources:
-    games:
-    - name: metacritic
-      is_enabled: True
-    trends: none
-    feedback:
-      reviews: none
-      comments: none
-      scores: none
-  database:
-    path: data/database/
-    sqlite3:
-      storage: sqlite_player_feedback.db
+  scripts:
+    apis: none
+    internal:
+      ffmpeg:
+        audio-codec: aac
+        audio-bitrate: 128k
+        video-codec: h264
+        video-bitrate: 500k
+    path: tools/local/scripts
+  # sources:
+  #   games:
+  #   - name: metacritic
+  #     is_enabled: True
+  #   trends: none
+  #   feedback:
+  #     reviews: none
+  #     comments: none
+  #     scores: none
   cache:
     path: data/cache/ 
     ignore_warning: False # in case reload/reset the cache memory is called
-apis:
-  hugging_face:
-    token: YOUR_HUGGING_FACE_TOKEN
-  google:
-    youtube-key: YOUR_YOUTUBE_API_TOKEN
-    video_published_before_days: 10
-    max_number_attempts: 5
-    is_simple_query: True
+# We can also force the fallback by disabling all of the entities type (model, source or player)
+models:
+  environment:
+  - repository: ultralytics
+    name: torch-hub-yolov5s
+    is_local: False
+    is_enabled: False
+  movement:
+  - repository: none
+    name: none
+    is_local: False
+    is_enabled: False
+  object:
+  - repository: facebook
+    name: detr-resnet-50
+    is_local: False
+    is_enabled: False
+    confidence_threshold: 0.5
+  - repository: openai
+    name: clip-vit-base-patch32
+    is_local: False
+    is_enabled: True
+    confidence_threshold: 0.5
+  video_classification:
+  - repository: pytorch
+    name: x3d-xs
+    is_local: False
+    is_enabled: False
+  conversation: # text generation/chatbots
+  - repository: meta-llama
+    name: Meta-Llama-3.1-8B-Instruct
+    is_local: False
+    is_enabled: False
+  - repository: openai-community
+    name: gpt2
+    is_local: False
+    is_enabled: True
+  question_answer:
+  - repository: deepset
+    name: roberta-base-squad2
+    is_local: False
+    is_enabled: True
+  translation: none
+  hugging_face_token: YOUR_HUGGING_FACE_TOKEN
+sources:
+  external:
+    apis:
+    - publisher: google
+      name: youtube
+      token: YOUR_YOUTUBE_API_TOKEN
+      video_published_before_days: 10
+      max_number_attempts: 5
+      is_simple_query: True
+      is_enabled: True
+    websites:
+    - name: metacritic
+      is_enabled: True
+  internal:
+    databases:
+    - name: sqlite3
+      is_enabled: False
+      storage: sqlite_player_feedback.db
+    path: data/database/
+player:
+  personality: ""  # Available: [happy, sad, frustrated, optimistic]
+  age_group: ""  # Available: [young > teen > adult > old]
+  location: ""  # Available: [Region > Country > Continent]
+  gender: ""  # Available: [female, male]

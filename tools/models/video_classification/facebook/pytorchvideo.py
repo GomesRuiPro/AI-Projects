@@ -1,5 +1,6 @@
 import torch.hub as hub
-from tools.models.model import VideoModel
+from innovation.FeedbackerAi.tools.models.model import VideoModel
+from typing import Optional, Dict, Any
 
 
 class PytorchVideo(VideoModel):

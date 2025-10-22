@@ -1,45 +1,44 @@
 
-from tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 from abc import ABC, abstractmethod
 from datetime import datetime
-from tools.models.model import Model, TextModel
-from tools.sources.external.metacritic import MetacriticClient
-from tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from agents.agent import Agent
+from innovation.FeedbackerAi.tools.models.model import Model, TextModel
+from innovation.FeedbackerAi.tools.sources.external.browser.metacritic import MetacriticClient
+from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
+from innovation.FeedbackerAi.agents.tools_client import Operation, ToolsFactory, ExecutionMode
+from innovation.FeedbackerAi.agents.agent import Agent
+from typing import Optional, Dict, Any
 
-
-APIS_CONFIG = Utility.load_yaml()["apis"]
-TOOLS_CONFIG = Utility.load_yaml()["local"]
 LLM_CONFIG = Utility.load_yaml()["llm"]
 
 class LLMGaming(Agent):
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, workflow_config):
+        super().__init__(workflow_config, LLM_CONFIG)
     
-    def start_model(self, *with_features):
-        self.models = {
-            "conversation": None,
-            "question_answer": None,
-            "translation": None
-        }
-        self.source_clients = {
-            "games": None,
-            "trends": None,
-            "feedback": [None]
-        }
+    # def start_model(self, *with_features):
+        # self.models = {
+        #     "conversation": None,
+        #     "question_answer": None,
+        #     "translation": None
+        # }
+        # self.source_clients = {
+        #     "games": None,
+        #     "trends": None,
+        #     "feedback": [None]
+        # }
         
-        for with_feature in with_features:
-            if "model" in with_feature:
-                if with_feature == "with_conversation":
-                    self.models["conversation"] = Conversation.create()
-                elif with_feature == "with_question_answer":
-                    self.models["question_answer"] = QuestionAnswer.create()
-                elif with_feature == "with_translation":
-                    self.models["translation"] = None
-            elif "source" in with_feature:
-                if with_feature == "with_source_games":
-                    self.source_clients["games"] = GamesSource.create()
+        # for with_feature in with_features:
+        #     if "model" in with_feature:
+        #         if with_feature == "with_conversation":
+        #             self.models["conversation"] = Conversation.create()
+        #         elif with_feature == "with_question_answer":
+        #             self.models["question_answer"] = QuestionAnswer.create()
+        #         elif with_feature == "with_translation":
+        #             self.models["translation"] = None
+        #     elif "source" in with_feature:
+        #         if with_feature == "with_source_games":
+        #             self.source_clients["games"] = GamesSource.create()
 
     def get_source_client(self, source_type):
         return self.source_clients[source_type]
@@ -65,62 +64,34 @@ class LLMGaming(Agent):
     #     Utility.get_video_comments("")
     
     def get_popular_games(self, genre, max_results=10):
-        client: MetacriticClient = self.get_source_client("games")
+        self.tools_client.create(Operation.GET_GAMES)
+        sources_execution_mode = self.tools_client.sources["execution_mode"]
+        sources = self.tools_client.sources["entities"]
+
+        if not sources:
+            return None
+        
+        if sources_execution_mode == ExecutionMode.FALLBACK:
+            return sources[0].execute()
+        
         current_year = datetime.now().year
-        return client.get_games(genre, current_year, current_year, max_results)
+    
+        games = []
+        for source in sources:
+            games.append(source.get_games(genre, current_year, current_year, max_results))
+        return games
+    
+    def get_reviews(self, game, max_results=10):
+        factory: ToolsFactory = self.tools_client.create(Operation.GET_REVIEWS)
+        sources = factory.createSources()
+           
+        reviews = []
+        for source in sources:
+            reviews.append(source.get_reviews(game, max_results))
+        return reviews
             
         
-class ModelClient(ABC):
-
-    model = None
-
-    @abstractmethod
-    def create():
-        pass
-
-
-class Conversation(ModelClient):
-
-    @staticmethod
-    def create():
-        config = LLM_CONFIG['models']['conversation']
-        conversationFactory = ConversationFactory(
-            config, APIS_CONFIG['hugging_face']['token'])
-        ModelClient.model = conversationFactory.create(
-            LLM_CONFIG['use_model_finetuned'], LLM_CONFIG['device_debug'])
-        return ModelClient.model
-
-class QuestionAnswer(ModelClient):
-
-    @staticmethod
-    def create():
-        config = LLM_CONFIG['models']['question_answer']
-        questionAnswerFactory = QuestionAnswerFactory(
-            config, APIS_CONFIG['hugging_face']['token'])
-        ModelClient.model = questionAnswerFactory.create(
-            LLM_CONFIG['use_model_finetuned'], LLM_CONFIG['device_debug'])
-        return ModelClient.model    
-    
-class SourceClient(ABC):
-    
-    source = None
-
-    @abstractmethod
-    def create():
-        pass
-    
-class GamesSource(SourceClient):
-
-    # Making the method simple to not focus on fallback or any factory. it moves directly to the intended source,
-    # but this should be updated in the future to dynamically should one or multiple source_clients
-    @staticmethod
-    def create():
-        config = TOOLS_CONFIG['sources']['games']
-        SourceClient.source  = MetacriticClient(config)
-        return SourceClient.source    
-
-
-    # def generate_search_queries(self, query, number_of_results=1):
+ # def generate_search_queries(self, query, number_of_results=1):
     #     question_llm_template = (
     #         "Hi! Generate a list of {number_of_results} search queries for videos about {query}  splitted by ','. Don't send me any extra details or comments."
     #         "Thank you!"
@@ -185,3 +156,5 @@ class GamesSource(SourceClient):
     #     result["desired"] = Utility.substring_from_char(answer, ':').split(',')
         
     #     return result
+   
+

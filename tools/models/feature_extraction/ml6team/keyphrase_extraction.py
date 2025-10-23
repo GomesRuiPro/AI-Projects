@@ -6,7 +6,7 @@ from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline
 from innovation.FeedbackerAi.tools.models.model import TextModel
 from typing import Optional, Dict, Any
 
-class Squad2(TextModel):
+class KeyphraseExtractionBert(TextModel):
 
     def __init__(self, config, token, model_name, pretrained, to_debug):
         super().__init__(config, model_name, pretrained, to_debug)
@@ -18,14 +18,17 @@ class Squad2(TextModel):
             self.model = None
             pass
         else:  # calling hugging face
-            self.model = pipeline('question-answering', model=self.model_name)
+            self.model = pipeline('feature-extraction', model=self.model_name, tokenizer=self.model_name)
 
     def execute(self, question):
-        return super().execute(question, self.talk)
+        return super().execute(question, self.extract)
     
     # Make predictions
-    def talk(self, question_context):
-        question, context = question_context
-        answer = self.model(question=question, context=context)
-        return answer
+    def extract(self, text):
+        answer = self.model(text)
+        
+        if float(answer["score"]) > float(self.config["confidence_threshold"]):
+            return answer
+        
+        return None
         

@@ -1,9 +1,9 @@
 from enum import Enum
 
-# Boolean values represent if these are critic or user feedback
+# Boolean values represent if these are official/recognized entity (false) or player feedback (true)
 class SOURCE_TYPE(Enum):
-    FORUM = False
-    SOCIAL_MEDIA = False
-    CRITIC = True
-    USER = False
-    UNKNOWN = False
+    FORUM = "forum", True
+    SOCIAL_MEDIA = "social-media", True
+    CRITIC = "critic", False
+    USER = "user", True
+    UNKNOWN = "unknown", True

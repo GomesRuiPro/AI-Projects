@@ -7,7 +7,8 @@ from innovation.FeedbackerAi.tools.sources.external.browser.metacritic import Me
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
 from innovation.FeedbackerAi.agents.tools_client import Operation, ToolsFactory, ExecutionMode
 from innovation.FeedbackerAi.agents.agent import Agent
-from typing import Optional, Dict, Any
+from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
+from typing import Optional, Dict, Any, List
 
 LLM_CONFIG = Utility.load_yaml()["llm"]
 
@@ -63,7 +64,7 @@ class LLMGaming(Agent):
         
     #     Utility.get_video_comments("")
     
-    def get_popular_games(self, genre, max_results=10):
+    def get_popular_games(self, genre: str, max_results=10):
         self.tools_client.create(Operation.GET_GAMES)
         sources_execution_mode = self.tools_client.sources["execution_mode"]
         sources = self.tools_client.sources["entities"]
@@ -78,17 +79,124 @@ class LLMGaming(Agent):
     
         games = []
         for source in sources:
-            games.append(source.get_games(genre, current_year, current_year, max_results))
+            games.extend(source.get_games(genre, current_year, current_year, max_results))
         return games
     
-    def get_reviews(self, game, max_results=10):
-        factory: ToolsFactory = self.tools_client.create(Operation.GET_REVIEWS)
-        sources = factory.createSources()
+    def get_reviews(self, games: List[str], max_results=10):
+        self.tools_client.create(Operation.GET_REVIEWS)
+        sources_execution_mode = self.tools_client.sources["execution_mode"]
+        sources = self.tools_client.sources["entities"]
+
+        if not sources:
+            return None
+        
+        if sources_execution_mode == ExecutionMode.FALLBACK:
+            return sources[0].execute()
            
-        reviews = []
-        for source in sources:
-            reviews.append(source.get_reviews(game, max_results))
-        return reviews
+        games_sources_reviews = {}
+        for game in games:
+            sources_reviews = []
+            
+            for source in sources:
+                reviews_source = source.get_reviews(game, max_results)
+                sources_reviews.append(reviews_source)
+                
+            sources_reviews_merged = Utility.merge_list_of_dicts(sources_reviews)
+            games_sources_reviews[game] = sources_reviews_merged
+        return games_sources_reviews
+    
+    def get_sentiment_score(self, comments: List[str]):
+        self.tools_client.create(Operation.DO_SENTIMENT_ANALYSIS)
+        models_execution_mode = self.tools_client.models["execution_mode"]
+        models = self.tools_client.models["entities"]
+
+        if not models:
+            return None
+        
+        if models_execution_mode == ExecutionMode.FALLBACK:
+            return models[0].execute()
+           
+        # REVIEW_SENTIMENT.UNKNOWN.name: text
+        
+        models_answers = {
+            "NEGATIVE": [],
+            "POSITIVE": [],
+            "NEUTRAL": []
+        }
+        
+        for comment in comments:
+            confidence_threshold_model = None
+            for model in models:
+                answer = model.execute(comment)
+                
+                if not answer:
+                    continue
+                
+                answer_sentiment, answer_score = answer
+                sentiment = REVIEW_SENTIMENT.UNKNOWN
+                
+                if not confidence_threshold_model:
+                    confidence_threshold_model = float(answer_score)
+                    
+                if float(answer_score) >= confidence_threshold_model: # In case positive and negative scores from different models are very close
+                    try:
+                        sentiment = REVIEW_SENTIMENT(answer_sentiment)
+                    except Exception as ex:
+                        print("Invalid sentiment: {answer_sentiment}")
+                        sentiment = REVIEW_SENTIMENT.UNKNOWN
+                    
+                    models_answers[sentiment.name].append(comment)
+                    confidence_threshold_model = float(answer_score)
+                
+        return models_answers
+    
+    def get_trends(self, comments: List[str]):
+        
+        return
+        
+        self.tools_client.create(Operation.GET_KEYWORDS)
+        models_execution_mode = self.tools_client.models["execution_mode"]
+        models = self.tools_client.models["entities"]
+
+        if not models:
+            return None
+        
+        if models_execution_mode == ExecutionMode.FALLBACK:
+            return models[0].execute()
+           
+        # REVIEW_SENTIMENT.UNKNOWN.name: text
+        
+        models_answers = {
+            "NEGATIVE": [],
+            "POSITIVE": [],
+            "NEUTRAL": []
+        }
+        
+        for comment in comments:
+            confidence_threshold_model = None
+            for model in models:
+                answer = model.execute(comment)
+                
+                if not answer:
+                    continue
+                
+                answer_sentiment, answer_score = answer
+                sentiment = REVIEW_SENTIMENT.UNKNOWN
+                
+                if not confidence_threshold_model:
+                    confidence_threshold_model = float(answer_score)
+                    
+                if float(answer_score) >= confidence_threshold_model: # In case positive and negative scores from different models are very close
+                    try:
+                        sentiment = REVIEW_SENTIMENT(answer_sentiment)
+                    except Exception as ex:
+                        print("Invalid sentiment: {answer_sentiment}")
+                        sentiment = REVIEW_SENTIMENT.UNKNOWN
+                    
+                    models_answers[sentiment.name].append(comment)
+                    confidence_threshold_model = float(answer_score)
+                
+        return models_answers
             
         
  # def generate_search_queries(self, query, number_of_results=1):

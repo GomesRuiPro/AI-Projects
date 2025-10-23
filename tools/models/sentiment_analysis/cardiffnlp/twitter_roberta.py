@@ -6,7 +6,7 @@ from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline
 from innovation.FeedbackerAi.tools.models.model import TextModel
 from typing import Optional, Dict, Any
 
-class Squad2(TextModel):
+class TwitterRoberta(TextModel):
 
     def __init__(self, config, token, model_name, pretrained, to_debug):
         super().__init__(config, model_name, pretrained, to_debug)
@@ -18,14 +18,20 @@ class Squad2(TextModel):
             self.model = None
             pass
         else:  # calling hugging face
-            self.model = pipeline('question-answering', model=self.model_name)
+            self.model = pipeline('sentiment-analysis', model=self.model_name, tokenizer=self.model_name)
 
     def execute(self, question):
-        return super().execute(question, self.talk)
+        return super().execute(question, self.analyse)
     
     # Make predictions
-    def talk(self, question_context):
-        question, context = question_context
-        answer = self.model(question=question, context=context)
-        return answer
+    def analyse(self, text):
+        answer = self.model(text,
+                            max_length=self.config["max_length"],
+                            padding='max_length',
+                            truncation=True)[0]
+        
+        if float(answer["score"]) > float(self.config["confidence_threshold"]):
+            return answer["label"], answer["score"]
+        
+        return None
         

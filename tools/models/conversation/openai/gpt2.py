@@ -21,7 +21,7 @@ class Gpt2(TextModel):
             self.model = pipeline('text-generation', model=self.model_name)
 
     def execute(self, question):
-        super().execute(question, self.generate_text)
+        return super().execute(question, self.generate_text)
     
     # Make predictions
     def generate_text(self, question):

@@ -36,7 +36,7 @@ class MetacriticClient():
     def get_genres(self):
         pass
         
-    def get_games(self, genre, year_min, year_max, max_results, sort_by="userscore"):
+    def get_games(self, genre: str, year_min: int, year_max: int, max_results: int, sort_by="userscore"):
         
         # Setting url
         release_year = ["current-year",""] if year_min == year_max else ["all_time",f"releaseYearMin={year_min}&releaseYearMax={year_max}&"]
@@ -58,7 +58,7 @@ class MetacriticClient():
         return games
     
     # We need to perform a for-loop because the url is different between different platforms and source types
-    def get_reviews(self, game, max_results,
+    def get_reviews(self, game: str, max_results: int,
                     source_types: List[SOURCE_TYPE]=[SOURCE_TYPE.USER], 
                     platforms: List[PLATFORM]=[PLATFORM.PS5],
                     sort_by="Metascore"):
@@ -73,7 +73,7 @@ class MetacriticClient():
                 # Setting url
                 source_type_str = source_type.name.lower()
                 platform_str = platform.value
-                self.webpage.resource = f"/{game}/{source_type_str}-reviews/"
+                self.webpage.resource = f"game/{game}/{source_type_str}-reviews"
                 self.webpage.filter = f"?platform={platform_str}&sort-by={sort_by}"
                 
                 # Setting ui component tree structure
@@ -82,7 +82,15 @@ class MetacriticClient():
                 parent_ui_component.add(Webpage.Leaf(type_to_fetch="span", _class="c-siteReview_quote g-outer-spacing-bottom-small"))
                 self.webpage.ui_component = parent_ui_component
             
-                reviews[platform][source_type] = ScriptManager.scrappe_url(self.webpage, max_results_per_call)
+                reviews[platform.name] = {
+                    source_type.name: []
+                }
+                
+                reviews_spans = ScriptManager.scrappe_url(self.webpage, max_results_per_call)[0][0]
+                
+                reviews_spans_list = reviews_spans['span']
+                for review_span in reviews_spans_list:
+                    reviews[platform.name][source_type.name].append(review_span)
                 
         return reviews
                 

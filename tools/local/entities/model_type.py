@@ -32,9 +32,24 @@ class MODEL_TEXT_QUESTION_ANSWER(Enum):
     DEEPSET_SQUAD2 = "squad2"
     UNKNOWN = "unknown"
     
+class MODEL_TEXT_SENTIMENT_ANALYSIS(Enum):
+    CARDIFFNLP_TWITTER_ROBERTA = "twitter-roberta"
+    UNKNOWN = "unknown"
+    
+class MODEL_TEXT_SUMMARIZATION(Enum):
+    GOOGLE_PEGASUS_XSUM = "pegasus-xsum"
+    UNKNOWN = "unknown"
+    
+class MODEL_TEXT_FEATURE_EXTRACTION(Enum):
+    M16TEAM_KEYPHRASE_EXTRACTION = "keyphrase-extraction"
+    UNKNOWN = "unknown"
+    
 class MODEL_TEXT(Enum):
     CONVERSATION = "conversation"
     QUESTION_ANSWER = "question-answer"
+    SENTIMENT_ANALYSIS = "sentiment-analysis"
+    SUMMARIZATION = "summarization"
+    FEATURE_EXTRACTION = "feature-extraction"
     UNKNOWN = "unknown"
     
 class MODEL(Enum):

@@ -7,9 +7,11 @@ import numpy as np
 import re
 import json
 import ast
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import importlib
 import inspect
+from collections import defaultdict
+
 
 class Utility:
     
@@ -166,6 +168,14 @@ class Utility:
         return int(td.total_seconds())
     
     # CONVERTERS #
+    
+    @staticmethod
+    def merge_list_of_dicts(dicts: List[Dict[Any, Any]]) -> Dict[Any, List[Any]]:
+        merged = defaultdict(list)
+        for d in dicts:
+            for key, value in d.items():
+                merged[key].append(value)
+        return dict(merged)
     
     @staticmethod
     def dict_values_to_string(input_dict):

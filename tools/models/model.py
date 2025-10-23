@@ -28,17 +28,17 @@ class TextModel(Model, ABC): # Used for text models
         if not self.model:
             self.setup()
 
-            # Get predictions
-            if model_execute_fn:
-                results = model_execute_fn(question)
-            
-            if results is None:
-                if self.to_debug:
-                    print(f"No answer found for question: {question}")
-                return None
-            
+        # Get predictions
+        if model_execute_fn:
+            results = model_execute_fn(question)
+        
+        if results is None:
             if self.to_debug:
-                print(f"Answers found for the question asked: {results}")
+                print(f"No answer found for question: {question}")
+            return None
+        
+        if self.to_debug:
+            print(f"Answers found for the question asked: {results}")
 
         return results
     

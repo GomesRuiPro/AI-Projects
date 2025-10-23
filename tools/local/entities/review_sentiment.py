@@ -1,5 +1,7 @@
 from enum import Enum
 
 class REVIEW_SENTIMENT(Enum):
-    POSITIVE = True
-    NEGATIVE = False
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+    UNKNOWN = None

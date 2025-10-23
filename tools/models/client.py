@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from innovation.FeedbackerAi.tools.models.factory import EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory
+from innovation.FeedbackerAi.tools.models.factory import FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory, SentimentAnalysisFactory
 
 MODELS_CONFIG = Utility.load_yaml()["models"]
 
@@ -33,6 +33,39 @@ class QuestionAnswer(ModelClient):
         questionAnswerFactory = QuestionAnswerFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
         ModelClient.model = questionAnswerFactory.create(
+            use_model_finetuned, device_debug)
+        return ModelClient.model    
+    
+class SentimentAnalysis(ModelClient):
+
+    @staticmethod
+    def create(model_config_name, use_model_finetuned, device_debug):
+        config = MODELS_CONFIG['sentiment_analysis']
+        sentimentAnalysisFactory = SentimentAnalysisFactory(model_config_name,
+            config, MODELS_CONFIG['hugging_face_token'])
+        ModelClient.model = sentimentAnalysisFactory.create(
+            use_model_finetuned, device_debug)
+        return ModelClient.model    
+
+class Summarization(ModelClient):
+
+    @staticmethod
+    def create(model_config_name, use_model_finetuned, device_debug):
+        config = MODELS_CONFIG['summarization']
+        summarizationFactory = SummarizationFactory(model_config_name,
+            config, MODELS_CONFIG['hugging_face_token'])
+        ModelClient.model = summarizationFactory.create(
+            use_model_finetuned, device_debug)
+        return ModelClient.model    
+    
+class FeatureExtraction(ModelClient):
+
+    @staticmethod
+    def create(model_config_name, use_model_finetuned, device_debug):
+        config = MODELS_CONFIG['feature-extraction']
+        featureExtractionFactory = FeatureExtractionFactory(model_config_name,
+            config, MODELS_CONFIG['hugging_face_token'])
+        ModelClient.model = featureExtractionFactory.create(
             use_model_finetuned, device_debug)
         return ModelClient.model    
     

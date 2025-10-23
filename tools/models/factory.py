@@ -4,10 +4,13 @@ from innovation.FeedbackerAi.tools.models.object.facebook.detr import Detr
 from innovation.FeedbackerAi.tools.models.object.openai.clip import Clip
 from innovation.FeedbackerAi.tools.models.question_answer.deepset.squad2 import Squad2
 from innovation.FeedbackerAi.tools.models.conversation.openai.gpt2 import Gpt2
+from innovation.FeedbackerAi.tools.models.sentiment_analysis.cardiffnlp.twitter_roberta import TwitterRoberta
+from innovation.FeedbackerAi.tools.models.summarization.google.pegasus_xsum import PegasusXsum
+from innovation.FeedbackerAi.tools.models.feature_extraction.ml6team.keyphrase_extraction import KeyphraseExtractionBert
 from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.fallback.userinput.user_input import UserInput
 from innovation.FeedbackerAi.tools.models.fallback.donothing.do_nothing import DoNothing
-from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VIDEO_CLASSIFICATION
+from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VIDEO_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
 
 
 class Factory(ABC):
@@ -47,11 +50,11 @@ class ObjectFactory(VisualModelFactory):
 
         # do reflection here
         model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if ObjectFactory.MODEL_TYPE.MICROSOFT_GLIP.value == self.model_config_name:
+        if ObjectFactory.MODEL_TYPE.MICROSOFT_GLIP.value in self.model_config_name:
             return Glip(model_to_run, self.token, model_name, device, pretrained, to_debug)
-        if ObjectFactory.MODEL_TYPE.FACEBOOK_DETR.value == self.model_config_name:
+        if ObjectFactory.MODEL_TYPE.FACEBOOK_DETR.value in self.model_config_name:
             return Detr(model_to_run, self.token, model_name, device, pretrained, to_debug)
-        if ObjectFactory.MODEL_TYPE.OPENAI_CLIP.value == self.model_config_name:
+        if ObjectFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
             return Clip(model_to_run, self.token, model_name, device, pretrained, to_debug)
 
 
@@ -113,10 +116,61 @@ class ConversationFactory(TextModelFactory, ABC):
 
         # do reflection here
         model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if ConversationFactory.MODEL_TYPE.OPENAI_GPT2.value == self.model_config_name:
+        if ConversationFactory.MODEL_TYPE.OPENAI_GPT2.value in self.model_config_name:
             return Gpt2(model_to_run, self.token, model_name, pretrained, to_debug)
-        if ConversationFactory.MODEL_TYPE.META_LLAMA_31.value == self.model_config_name:
+        if ConversationFactory.MODEL_TYPE.META_LLAMA_31.value in self.model_config_name:
             pass
+        
+class SentimentAnalysisFactory(TextModelFactory, ABC):
+    
+    MODEL_TYPE = MODEL_TEXT_SENTIMENT_ANALYSIS
+        
+    def __init__(self, model_config_name, config, token=None):
+        super().__init__(model_config_name, config, token)
+
+    def create(self, pretrained, to_debug=0):
+        model_to_run = super().to_fallback("Sentiment Analysis")
+        if isinstance(model_to_run, Model):
+            return model_to_run
+
+        # do reflection here
+        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        if SentimentAnalysisFactory.MODEL_TYPE.CARDIFFNLP_TWITTER_ROBERTA.value in self.model_config_name:
+            return TwitterRoberta(model_to_run, self.token, model_name, pretrained, to_debug)
+
+class SummarizationFactory(TextModelFactory, ABC):
+    
+    MODEL_TYPE = MODEL_TEXT_SUMMARIZATION
+        
+    def __init__(self, model_config_name, config, token=None):
+        super().__init__(model_config_name, config, token)
+
+    def create(self, pretrained, to_debug=0):
+        model_to_run = super().to_fallback("Summarization")
+        if isinstance(model_to_run, Model):
+            return model_to_run
+
+        # do reflection here
+        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        if SummarizationFactory.MODEL_TYPE.GOOGLE_PEGASUS_XSUM.value in self.model_config_name:
+            return PegasusXsum(model_to_run, self.token, model_name, pretrained, to_debug)
+        
+class FeatureExtractionFactory(TextModelFactory, ABC):
+    
+    MODEL_TYPE = MODEL_TEXT_FEATURE_EXTRACTION
+        
+    def __init__(self, model_config_name, config, token=None):
+        super().__init__(model_config_name, config, token)
+
+    def create(self, pretrained, to_debug=0):
+        model_to_run = super().to_fallback("Feature Extraction")
+        if isinstance(model_to_run, Model):
+            return model_to_run
+
+        # do reflection here
+        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        if FeatureExtractionFactory.MODEL_TYPE.M16TEAM_KEYPHRASE_EXTRACTION.value in self.model_config_name:
+            return KeyphraseExtractionBert(model_to_run, self.token, model_name, pretrained, to_debug)
     
 class QuestionAnswerFactory(TextModelFactory):
     
@@ -133,5 +187,5 @@ class QuestionAnswerFactory(TextModelFactory):
         
          # do reflection here
         model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if QuestionAnswerFactory.MODEL_TYPE.DEEPSET_SQUAD2.value == self.model_config_name:
+        if QuestionAnswerFactory.MODEL_TYPE.DEEPSET_SQUAD2.value in self.model_config_name:
             return Squad2(model_to_run, self.token, model_name, pretrained, to_debug)

@@ -112,9 +112,37 @@ def main():
             popular_games = llm_gaming.get_popular_games(genre)
             print(popular_games)
 
-            # Get trends keywords
-            # response = llm_gaming.get_trends(genre)
-            # print(response)
+            # Get Reviews
+            # Reviews follow the structure: {
+                # game: {
+                    # [webpages:
+                        # platform: {
+                            # source_type: {
+                                # [comments]
+                            # } 
+                        # }
+                    # ]
+                # }
+            # }
+
+            reviews = llm_gaming.get_reviews(popular_games)
+            print(reviews)
+            
+            # Get sentiment for review
+            # Sentiments follow the structure: {
+                # Sentiment: [comments]
+            # }
+            genre_comments = []
+            for review_game in reviews.values():
+                for review_game_platform in review_game.values():
+                    for review_game_platform_source in review_game_platform:
+                        for review_game_platform_source_comments in review_game_platform_source.values():
+                            genre_comments.extend(review_game_platform_source_comments)
+            sentiments = llm_gaming.get_sentiment_score(genre_comments)
+            print(sentiments)
+            
+            # Get keywords for each sentimented review
+            trends = llm_gaming.get_trends(genre_comments)
             
             # Extract features from video
             # result = vlm_gaming.execute(video_filename_path)

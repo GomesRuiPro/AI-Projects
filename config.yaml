@@ -16,11 +16,11 @@ main:
       sources: ['metacritic']
       player: none
     do-sentiment-analysis:
-      models: none
+      models: ['cardiffnlp/twitter-roberta-base-sentiment-latest']
       sources: none
       player: none
-    do-summarization:
-      models: none
+    get-keywords:
+      models: ['ml6team/keyphrase-extraction-bert']
       sources: none
       player: none
     extract-video-object-detection-features:
@@ -77,11 +77,13 @@ models:
     name: torch-hub-yolov5s
     is_local: False
     is_enabled: False
+    confidence_threshold: 0.5
   movement:
   - repository: none
     name: none
     is_local: False
     is_enabled: False
+    confidence_threshold: 0.5
   object:
   - repository: facebook
     name: detr-resnet-50
@@ -98,20 +100,45 @@ models:
     name: x3d-xs
     is_local: False
     is_enabled: False
+    confidence_threshold: 0.5
   conversation: # text generation/chatbots
   - repository: meta-llama
     name: Meta-Llama-3.1-8B-Instruct
     is_local: False
     is_enabled: False
+    confidence_threshold: 0.5
   - repository: openai-community
     name: gpt2
     is_local: False
     is_enabled: True
+    confidence_threshold: 0.5
+  sentiment_analysis:
+  - repository: cardiffnlp
+    name: twitter-roberta-base-sentiment-latest
+    is_local: False
+    is_enabled: True
+    confidence_threshold: 0.5
+    max_length: 512 # max number of characters/tokens for roberta models. If it is above, it truncates the text
+  summarization:
+  - repository: google
+    name: pegasus-xsum
+    is_local: False
+    is_enabled: False
+    confidence_threshold: 0.5
+    max_length: 512 # max number of characters/tokens for roberta models. If it is above, it truncates the text
+    min_length: 20 # less than this, makes it harder for the model to get the context
+  feature-extraction:
+  - repository: ml6team
+    name: keyphrase-extraction-bert
+    is_local: False
+    is_enabled: True
+    confidence_threshold: 0.5
   question_answer:
   - repository: deepset
     name: roberta-base-squad2
     is_local: False
     is_enabled: True
+    confidence_threshold: 0.5
   translation: none
   hugging_face_token: YOUR_HUGGING_FACE_TOKEN
 sources:

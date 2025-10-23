@@ -7,7 +7,7 @@ from innovation.FeedbackerAi.tools.players.fallback.userinput.user_input import 
 from innovation.FeedbackerAi.tools.sources.source import Source
 from innovation.FeedbackerAi.tools.players.player import Player
 from innovation.FeedbackerAi.tools.models.model import Model
-from innovation.FeedbackerAi.tools.models.client import ModelClient, Conversation, QuestionAnswer, VideoClassification
+from innovation.FeedbackerAi.tools.models.client import ModelClient, Conversation, QuestionAnswer, VideoClassification, SentimentAnalysis, Summarization, FeatureExtraction
 from innovation.FeedbackerAi.tools.players.client import PlayerClient, GenericPlayer, GamingPlayer
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
@@ -21,6 +21,7 @@ class Operation:
     GET_GAMES = "get-games"
     GET_REVIEWS = "get-reviews"
     DO_SENTIMENT_ANALYSIS = "do-sentiment-analysis"
+    GET_KEYWORDS = "get-keywords"
     DO_SUMMARIZATION = "do-summarization"
     EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES = "extract-video-object-detection-features"
     EXTRACT_VIDEO_ENVIRONMENT_FEATURES = "extract-video-environment-features"
@@ -87,7 +88,16 @@ class ToolsFactory(ABC):
         
         if execution_mode == ExecutionMode.MULTIPLE and len(sources_config) <= 1:
             raise Exception("This operation is expected to run more than 1 model")
-            
+        
+        # NEEDS REFACTORING - creates a lot of dependencies = ENUM needs to match the CLASS name. Reflection is not a good option
+        if sources_config:
+            sources = []
+            for source_config_name in sources_config:
+                source_enum = SOURCE_TYPE.recurse_bottom_to_top(source_config_name, number_of_levels=1)
+                client = source_enum.get_client()
+                source = client.create()
+                sources.append(source)
+            return sources, execution_mode
         return sources_config, execution_mode
     
     def createPlayer(self):
@@ -120,29 +130,34 @@ class GetGenreFactory(ToolsFactory):
 class GetGamesFactory(ToolsFactory):
     
     def createSources(self):
-        source_module_name = "innovation.FeedbackerAi.tools.sources.client"
-        source_config_names, execution_mode = super().createSources()
-        
-        # NEEDS REFACTORING - creates a lot of dependencies = ENUM needs to match the CLASS name. Reflection is not a good option
-        if source_config_names:
-            sources = []
-            for source_config_name in source_config_names:
-                source_enum = SOURCE_TYPE.recurse_bottom_to_top(source_config_name, number_of_levels=1)
-                client = source_enum.get_client()
-                source = client.create()
-                sources.append(source)
-            return sources, execution_mode
-        return source_config_names, execution_mode
+        return super().createSources()
     
 class GetReviewsFactory(ToolsFactory):
-        pass
     
+    def createSources(self):
+        return super().createSources()
+        
 class DoSentimentAnalysisFactory(ToolsFactory):
-        pass
+    def createModels(self):
+        model_config_names, execution_mode = super().createModels()
+        
+        models = []     
+        for model_config_name in model_config_names:
+            models.append(SentimentAnalysis.create(model_config_name, 
+                                                self.bot_config["use_model_finetuned"], 
+                                                self.bot_config["device_debug"]))
+        return models, execution_mode
     
-class DoSummarizationFactory(ToolsFactory):
-        pass
-    
+class GetKeywordsFactory(ToolsFactory):
+    def createModels(self):
+        model_config_names, execution_mode = super().createModels()
+        
+        models = []     
+        for model_config_name in model_config_names:
+            models.append(FeatureExtraction.create(model_config_name, 
+                                                self.bot_config["use_model_finetuned"], 
+                                                self.bot_config["device_debug"]))
+        return models, execution_mode
     
 class ToolsClient:
     
@@ -163,8 +178,8 @@ class ToolsClient:
             factory = GetReviewsFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.DO_SENTIMENT_ANALYSIS:
             factory = DoSentimentAnalysisFactory(workflow_config_operation, self.bot_config)
-        elif bot_operation == Operation.DO_SUMMARIZATION:
-            factory = DoSummarizationFactory(workflow_config_operation, self.bot_config)
+        elif bot_operation == Operation.GET_KEYWORDS:
+            factory = GetKeywordsFactory(workflow_config_operation, self.bot_config)
         else:
             raise Exception(f"{bot_operation.name} has not been implement nor exists.")
 

@@ -152,8 +152,6 @@ class LLMGaming(Agent):
     
     def get_trends(self, comments: List[str]):
         
-        return
-        
         self.tools_client.create(Operation.GET_KEYWORDS)
         models_execution_mode = self.tools_client.models["execution_mode"]
         models = self.tools_client.models["entities"]
@@ -164,37 +162,16 @@ class LLMGaming(Agent):
         if models_execution_mode == ExecutionMode.FALLBACK:
             return models[0].execute()
            
-        # REVIEW_SENTIMENT.UNKNOWN.name: text
-        
-        models_answers = {
-            "NEGATIVE": [],
-            "POSITIVE": [],
-            "NEUTRAL": []
-        }
+        models_answers: List[str] = []
         
         for comment in comments:
-            confidence_threshold_model = None
             for model in models:
-                answer = model.execute(comment)
+                answers = model.execute(comment)
                 
-                if not answer:
+                if not answers:
                     continue
-                
-                answer_sentiment, answer_score = answer
-                sentiment = REVIEW_SENTIMENT.UNKNOWN
-                
-                if not confidence_threshold_model:
-                    confidence_threshold_model = float(answer_score)
                     
-                if float(answer_score) >= confidence_threshold_model: # In case positive and negative scores from different models are very close
-                    try:
-                        sentiment = REVIEW_SENTIMENT(answer_sentiment)
-                    except Exception as ex:
-                        print("Invalid sentiment: {answer_sentiment}")
-                        sentiment = REVIEW_SENTIMENT.UNKNOWN
-                    
-                    models_answers[sentiment.name].append(comment)
-                    confidence_threshold_model = float(answer_score)
+                models_answers.extend(answers)
                 
         return models_answers
             

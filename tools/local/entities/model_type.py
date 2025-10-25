@@ -41,7 +41,11 @@ class MODEL_TEXT_SUMMARIZATION(Enum):
     UNKNOWN = "unknown"
     
 class MODEL_TEXT_FEATURE_EXTRACTION(Enum):
-    M16TEAM_KEYPHRASE_EXTRACTION = "keyphrase-extraction"
+    ML6TEAM_KEYPHRASE_EXTRACTION = "keyphrase-extraction"
+    UNKNOWN = "unknown"
+    
+class MODEL_TEXT_CLASSIFICATION(Enum):
+    FACEBOOK_BART_MNLI = "bart-mnli"
     UNKNOWN = "unknown"
     
 class MODEL_TEXT(Enum):
@@ -50,6 +54,7 @@ class MODEL_TEXT(Enum):
     SENTIMENT_ANALYSIS = "sentiment-analysis"
     SUMMARIZATION = "summarization"
     FEATURE_EXTRACTION = "feature-extraction"
+    TEXT_CLASSIFICATION = "text-classification"
     UNKNOWN = "unknown"
     
 class MODEL(Enum):

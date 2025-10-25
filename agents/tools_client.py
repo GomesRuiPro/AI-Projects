@@ -18,6 +18,7 @@ from typing import Optional, Dict, Any, List
 # Make sure the operation order is kept
 class Operation:
     GET_GENRE = "get-genre"
+    # GET_FEATURES = "get-features"
     GET_GAMES = "get-games"
     GET_REVIEWS = "get-reviews"
     DO_SENTIMENT_ANALYSIS = "do-sentiment-analysis"

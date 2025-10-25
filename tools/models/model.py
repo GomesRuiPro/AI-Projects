@@ -32,7 +32,7 @@ class TextModel(Model, ABC): # Used for text models
         if model_execute_fn:
             results = model_execute_fn(question)
         
-        if results is None:
+        if not results:
             if self.to_debug:
                 print(f"No answer found for question: {question}")
             return None

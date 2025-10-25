@@ -1,6 +1,7 @@
 main:
   file_game: game1.mp4
   # New design pattern = Abstract factory that allows to choose which models, sources and audience to use for each step.
+  # To improve accuracy, you can set multiple models of the same type for the same operation
   # NOTE: [] = empty = 'none' = skips; fallback = triggers fallback; [data] = triggers each entity named data
   workflow:
     get-genre:
@@ -20,7 +21,11 @@ main:
       sources: none
       player: none
     get-keywords:
-      models: ['ml6team/keyphrase-extraction-bert']
+      models: ['ml6team/keyphrase-extraction-kbir-inspec']
+      sources: none
+      player: none
+    filter-keywords:
+      models: ['facebook/bart-large-mnli']
       sources: none
       player: none
     extract-video-object-detection-features:
@@ -119,6 +124,12 @@ models:
     is_enabled: True
     confidence_threshold: 0.5
     max_length: 512 # max number of characters/tokens for roberta models. If it is above, it truncates the text
+  named_entity_recognition:
+  - repository: dbmdz
+  name: test
+  is_local: False
+  is_enabled: False
+  confidence_threshold: 0.5
   summarization:
   - repository: google
     name: pegasus-xsum
@@ -127,9 +138,15 @@ models:
     confidence_threshold: 0.5
     max_length: 512 # max number of characters/tokens for roberta models. If it is above, it truncates the text
     min_length: 20 # less than this, makes it harder for the model to get the context
-  feature-extraction:
+  feature_extraction:
   - repository: ml6team
-    name: keyphrase-extraction-bert
+    name: keyphrase-extraction-kbir-inspec
+    is_local: False
+    is_enabled: True
+    confidence_threshold: 0.5
+  text_classification:
+  - repository: facebook
+    name: bart-large-mnli
     is_local: False
     is_enabled: True
     confidence_threshold: 0.5

@@ -6,11 +6,12 @@ from innovation.FeedbackerAi.tools.models.question_answer.deepset.squad2 import 
 from innovation.FeedbackerAi.tools.models.conversation.openai.gpt2 import Gpt2
 from innovation.FeedbackerAi.tools.models.sentiment_analysis.cardiffnlp.twitter_roberta import TwitterRoberta
 from innovation.FeedbackerAi.tools.models.summarization.google.pegasus_xsum import PegasusXsum
-from innovation.FeedbackerAi.tools.models.feature_extraction.ml6team.keyphrase_extraction import KeyphraseExtractionBert
+from innovation.FeedbackerAi.tools.models.feature_extraction.ml6team.keyphrase_extraction_kbir_inspec import KeyphraseExtractionKbirInspec
+from innovation.FeedbackerAi.tools.models.text_classification.facebook.bart_mnli import BartMnli
 from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.fallback.userinput.user_input import UserInput
 from innovation.FeedbackerAi.tools.models.fallback.donothing.do_nothing import DoNothing
-from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VIDEO_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
+from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_CLASSIFICATION, MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VIDEO_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
 
 
 class Factory(ABC):
@@ -169,8 +170,25 @@ class FeatureExtractionFactory(TextModelFactory, ABC):
 
         # do reflection here
         model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if FeatureExtractionFactory.MODEL_TYPE.M16TEAM_KEYPHRASE_EXTRACTION.value in self.model_config_name:
-            return KeyphraseExtractionBert(model_to_run, self.token, model_name, pretrained, to_debug)
+        if FeatureExtractionFactory.MODEL_TYPE.ML6TEAM_KEYPHRASE_EXTRACTION.value in self.model_config_name:
+            return KeyphraseExtractionKbirInspec(model_to_run, self.token, model_name, pretrained, to_debug)
+
+class TextclassificationFactory(TextModelFactory, ABC):
+    
+    MODEL_TYPE = MODEL_TEXT_CLASSIFICATION
+        
+    def __init__(self, model_config_name, config, token=None):
+        super().__init__(model_config_name, config, token)
+
+    def create(self, pretrained, to_debug=0):
+        model_to_run = super().to_fallback("Text Classification")
+        if isinstance(model_to_run, Model):
+            return model_to_run
+
+        # do reflection here
+        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        if TextclassificationFactory.MODEL_TYPE.FACEBOOK_BART_MNLI.value in self.model_config_name:
+            return BartMnli(model_to_run, self.token, model_name, pretrained, to_debug)
     
 class QuestionAnswerFactory(TextModelFactory):
     

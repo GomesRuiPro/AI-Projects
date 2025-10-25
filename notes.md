@@ -223,15 +223,16 @@ Mon Sep 22 13:40:51 2025
 
 
 Feature implemented:
-- set a number of different models for object detection, environment and movement.
+- set a number of different models for object detection, environment and movement. DONE
 - get genre will be stubbed for now - DONE
 - install the model coming from hugging face or - DOEN
 - check and filter by confidence - DONE
 - Show image with squares for object detection - DONE
-- Caching
-- Web scrapping
-- Sources linked with LLM
+- Caching - DONE
+- Web scrapping - DONE
+- Sources linked with LLM - DONE
 - restructure model class with fallback (factory, iterator and strategy DPs) - DONE
+- 
 
 
 
@@ -242,7 +243,15 @@ TODO features:
 
 
 Next features:
-- create individual models based on age group, region, gender (model execution process is the same, but data is different so finetuning would be different)
+
+- improve performance: Example Workflow:
+Extract comments/reviews.
+Run keyword extraction/NLP analysis.
+Generate a list of trending keywords/phrases. (most common keywrods mentioend)
+Visualize trends over time (charts, heatmaps).
+Summarize insights based on context and frequency.
+
+- create individual models based on age group, region, gender (model execution process is the same, but data is different so finetuning would be different) - audience segmentation
 - 
 - set the models locally
 - finetune models to gaming context
@@ -251,6 +260,8 @@ Next features:
 - getGenre needs to be improved by detecting also subgenres
 - Try to make this bot script to run as a subprocess in the backgroud.
 - When looking to finetune, try to automatically detect when a game is booting and record that session for a couple of minutes. Put it in a specific folder so that we can later manually decide how to label it
+- run bot in background
+- do video capture automatically once a game starts
 
 LIMITATIONS:
 

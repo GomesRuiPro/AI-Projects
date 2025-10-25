@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from innovation.FeedbackerAi.tools.models.factory import FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory, SentimentAnalysisFactory
+from innovation.FeedbackerAi.tools.models.factory import TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory, SentimentAnalysisFactory
 
 MODELS_CONFIG = Utility.load_yaml()["models"]
 
@@ -62,12 +62,23 @@ class FeatureExtraction(ModelClient):
 
     @staticmethod
     def create(model_config_name, use_model_finetuned, device_debug):
-        config = MODELS_CONFIG['feature-extraction']
+        config = MODELS_CONFIG['feature_extraction']
         featureExtractionFactory = FeatureExtractionFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
         ModelClient.model = featureExtractionFactory.create(
             use_model_finetuned, device_debug)
         return ModelClient.model    
+    
+class TextClassification(ModelClient):
+
+    @staticmethod
+    def create(model_config_name, use_model_finetuned, device_debug):
+        config = MODELS_CONFIG['text_classification']
+        textclassificationFactory = TextclassificationFactory(model_config_name,
+            config, MODELS_CONFIG['hugging_face_token'])
+        ModelClient.model = textclassificationFactory.create(
+            use_model_finetuned, device_debug)
+        return ModelClient.model   
     
 # VISUAL MODELS #
 class VisualModelClient(ModelClient, ABC):

@@ -21,7 +21,7 @@ GREETING_TEMPLATE = (
     "Simply send me a quick gameplay video, by telling me the filename (mp4 or avi), and I can tell you how it would fit the current audience!\n"
     "For more details on the final results, you can use the following keys:\n"
     "\tq - to quit\n"
-    "\tf=<focus> - to focus on a specific topic (by default: general)\n"
+    "\tf=<focus> - to focus on a specific topic (by default: generic)\n"
     "\ts=<source> - to specify which sources should we use to validate your game (by default: social media)\n"
     "> start "
 )
@@ -70,8 +70,8 @@ def goodbye():
 
 
 def parse_user_input(input_str):
-    focus = "general"
-    sources = ["social media"]
+    focus = None
+    sources = SOURC
 
     parts = input_str.strip().split()
 
@@ -105,7 +105,6 @@ def main():
             # vlm_gaming.start_model(force_retrain=force_retrain, force_download_videos=force_download_videos, use_model_finetuned=use_model_finetuned, games_per_genre=games_per_genre)
 
             # Classify genre using VLM
-            print("Classifying video...")
             genre = vlm_gaming.get_genre(video_filename_path)
             
             # Get popular games
@@ -142,7 +141,14 @@ def main():
             print(sentiments)
             
             # Get keywords for each sentimented review
-            trends = llm_gaming.get_trends(genre_comments)
+            # Sentiments follow the structure: {
+                # Sentiment: [keywords]
+            # }
+            sentiments_with_trends = {}
+            for sentiment, comments in sentiments.items():
+                trends = llm_gaming.get_trends(comments)
+                sentiments_with_trends[sentiment] = trends
+            print(sentiments_with_trends)
             
             # Extract features from video
             # result = vlm_gaming.execute(video_filename_path)

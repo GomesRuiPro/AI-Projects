@@ -99,8 +99,8 @@ class VLMGaming(Agent):
 
         return frames
 
-    def get_genre(self, video_path):
-        self.tools_client.create(Operation.GET_GENRE)
+    def EXTRACT_GENRE(self, video_path):
+        self.tools_client.create(Operation.EXTRACT_GENRE)
         model_execution_mode = self.tools_client.models["execution_mode"]
         models = self.tools_client.models["entities"]
 

@@ -17,8 +17,8 @@ from typing import Optional, Dict, Any, List
 
 # Make sure the operation order is kept
 class Operation:
-    GET_GENRE = "get-genre"
-    # GET_FEATURES = "get-features"
+    EXTRACT_GENRE = "extract-genre"
+    GET_FEATURES = "get-features"
     GET_GAMES = "get-games"
     GET_REVIEWS = "get-reviews"
     DO_SENTIMENT_ANALYSIS = "do-sentiment-analysis"
@@ -171,7 +171,7 @@ class ToolsClient:
         workflow_config_operation = self.workflow_config[bot_operation]
         
         # ADD ALL STEPS DONE BY THE BOT
-        if bot_operation == Operation.GET_GENRE:
+        if bot_operation == Operation.EXTRACT_GENRE:
             factory = GetGenreFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.GET_GAMES:
             factory = GetGamesFactory(workflow_config_operation, self.bot_config)

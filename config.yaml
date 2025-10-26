@@ -4,9 +4,13 @@ main:
   # To improve accuracy, you can set multiple models of the same type for the same operation
   # NOTE: [] = empty = 'none' = skips; fallback = triggers fallback; [data] = triggers each entity named data
   workflow:
-    get-genre:
+    extract-genre:
       models: fallback
       sources: none
+      player: none
+    get-features:
+      models: none
+      sources: [rawg]
       player: none
     get-games:
       models: none

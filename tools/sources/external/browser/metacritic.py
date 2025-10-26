@@ -33,7 +33,7 @@ class MetacriticClient():
         self.to_debug = to_debug
         self.webpage = Webpage(MetacriticClient.DOMAIN)
         
-    def get_genres(self):
+    def extract_genres(self):
         pass
         
     def get_games(self, genre: str, year_min: int, year_max: int, max_results: int, sort_by="userscore"):

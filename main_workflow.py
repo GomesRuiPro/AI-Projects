@@ -5,6 +5,8 @@ from innovation.FeedbackerAi.agents.llm import LLMGaming
 from innovation.FeedbackerAi.agents.vlm import VLMGaming
 from innovation.FeedbackerAi.agents.exception_handler import RetryException, QuitRequestException
 from innovation.FeedbackerAi.tools.local.utilities import Utility
+from innovation.FeedbackerAi.tools.local.entities.feature_type import TYPE
+from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
 import traceback
 from innovation.FeedbackerAi.tools.local.memory.cache import CacheClient
 
@@ -21,16 +23,16 @@ GREETING_TEMPLATE = (
     "Simply send me a quick gameplay video, by telling me the filename (mp4 or avi), and I can tell you how it would fit the current audience!\n"
     "For more details on the final results, you can use the following keys:\n"
     "\tq - to quit\n"
-    "\tf=<focus> - to focus on a specific topic (by default: generic)\n"
-    "\ts=<source> - to specify which sources should we use to validate your game (by default: social media)\n"
+    f"\tf=<focus> - to focus on a specific topic: {TYPE._member_names_}\n"
+    f"\ts=<source> - to specify which sources should we use to validate your game: {SOURCE_TYPE._member_names_}\n"
     "> start "
 )
 
 QUESTION_TEMPLATE = (
     "\nDo you want to ask anything else? As a reminder, here are some keys you can use:\n"
     "\tq - to quit\n"
-    "\tf=<focus> - to focus on a specific topic (by default: general)\n"
-    "\ts=<source> - to specify which sources should we use to validate your game (by default: social media)\n"
+    f"\tf=<focus> - to focus on a specific topic: {TYPE._member_names_}\n"
+    f"\ts=<source> - to specify which sources should we use to validate your game: {SOURCE_TYPE._member_names_}\n"
     "> start "
 )
 
@@ -71,7 +73,7 @@ def goodbye():
 
 def parse_user_input(input_str):
     focus = None
-    sources = SOURC
+    sources = None
 
     parts = input_str.strip().split()
 
@@ -105,7 +107,7 @@ def main():
             # vlm_gaming.start_model(force_retrain=force_retrain, force_download_videos=force_download_videos, use_model_finetuned=use_model_finetuned, games_per_genre=games_per_genre)
 
             # Classify genre using VLM
-            genre = vlm_gaming.get_genre(video_filename_path)
+            genre = vlm_gaming.extract_genre(video_filename_path)
             
             # Get popular games
             popular_games = llm_gaming.get_popular_games(genre)

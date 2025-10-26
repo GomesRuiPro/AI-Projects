@@ -1,25 +1,38 @@
 from innovation.FeedbackerAi.agents.exception_handler import QuitRequestException
 from innovation.FeedbackerAi.tools.models.model import Model
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from enum import Enum
 
 
 class UserInput(Model):
     is_multiple_answers_allowed = False
 
-    def __init__(self, model_name, topic, is_multiple_answers_allowed=False):
+    def __init__(self, model_name, topic, available_options: Enum = None, is_multiple_answers_allowed=False):
         super().__init__(None, model_name)
+        
+        available_options_str = ""
+        if not available_options:
+            available_options_str = f"Available options: {list(available_options)}"
+            
         self.question_template = """This model is under construction and cannot be used. However, we can mock its result :)
-    What would you expect the model \"{model_name}\" response to be about the {topic}?
+            What would you expect the model \"{model_name}\" response to be about the {topic}?
+            {available_options_str}
         q - to quit """
         
         self.topic = topic
         self.is_multiple_answers_allowed = is_multiple_answers_allowed
         
-    def __init__(self, topic, is_multiple_answers_allowed=False):
+    def __init__(self, topic, available_options: Enum = None, is_multiple_answers_allowed=False):
         super().__init__(None, None)
+        
+        available_options_str = ""
+        if not available_options:
+            available_options_str = f"Available options: {list(available_options)}"
+            
         self.question_template = """This model is under construction and cannot be used. However, we can mock its result :)
-    What would you expect the result from the operation {topic}?
-        q - to quit """
+            What would you expect the result from the operation {topic}?
+            {available_options_str}
+            q - to quit """
         self.topic = topic
         self.is_multiple_answers_allowed = is_multiple_answers_allowed
 

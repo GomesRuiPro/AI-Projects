@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from innovation.FeedbackerAi.tools.models.factory import TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory, SentimentAnalysisFactory
+from innovation.FeedbackerAi.tools.models.factory import TranslationFactory, TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory, SentimentAnalysisFactory
 
 MODELS_CONFIG = Utility.load_yaml()["models"]
 
@@ -35,6 +35,17 @@ class QuestionAnswer(ModelClient):
         ModelClient.model = questionAnswerFactory.create(
             use_model_finetuned, device_debug)
         return ModelClient.model    
+
+class Translation(ModelClient):
+
+    @staticmethod
+    def create(model_config_name, use_model_finetuned, device_debug):
+        config = MODELS_CONFIG['translation']
+        translationFactory = TranslationFactory(model_config_name,
+            config, MODELS_CONFIG['hugging_face_token'])
+        ModelClient.model = translationFactory.create(
+            use_model_finetuned, device_debug)
+        return ModelClient.model 
     
 class SentimentAnalysis(ModelClient):
 

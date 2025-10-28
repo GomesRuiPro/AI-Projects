@@ -5,10 +5,11 @@ from innovation.FeedbackerAi.agents.llm import LLMGaming
 from innovation.FeedbackerAi.agents.vlm import VLMGaming
 from innovation.FeedbackerAi.agents.exception_handler import RetryException, QuitRequestException
 from innovation.FeedbackerAi.tools.local.utilities import Utility
-from innovation.FeedbackerAi.tools.local.entities.feature_type import TYPE
+from innovation.FeedbackerAi.tools.local.entities.feature_type import TYPE as FEATURE_TYPE
 from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
 import traceback
 from innovation.FeedbackerAi.tools.local.memory.cache import CacheClient
+from typing import List
 
 # Init Cache
 CacheClient.init_cache()
@@ -23,16 +24,16 @@ GREETING_TEMPLATE = (
     "Simply send me a quick gameplay video, by telling me the filename (mp4 or avi), and I can tell you how it would fit the current audience!\n"
     "For more details on the final results, you can use the following keys:\n"
     "\tq - to quit\n"
-    f"\tf=<focus> - to focus on a specific topic: {TYPE._member_names_}\n"
-    f"\ts=<source> - to specify which sources should we use to validate your game: {SOURCE_TYPE._member_names_}\n"
+    f"\tf=<focus> - to focus on a specific topic: {FEATURE_TYPE._member_names_}\n"
+    f"\ts=<source> - to specify which source should we use to validate your game: {SOURCE_TYPE._member_names_}\n"
     "> start "
 )
 
 QUESTION_TEMPLATE = (
     "\nDo you want to ask anything else? As a reminder, here are some keys you can use:\n"
     "\tq - to quit\n"
-    f"\tf=<focus> - to focus on a specific topic: {TYPE._member_names_}\n"
-    f"\ts=<source> - to specify which sources should we use to validate your game: {SOURCE_TYPE._member_names_}\n"
+    f"\tf=<focus> - to focus on a specific topic: {FEATURE_TYPE._member_names_}\n"
+    f"\ts=<source> - to specify which source should we use to validate your game: {SOURCE_TYPE._member_names_}\n"
     "> start "
 )
 
@@ -73,7 +74,7 @@ def goodbye():
 
 def parse_user_input(input_str):
     focus = None
-    sources = None
+    source = None
 
     parts = input_str.strip().split()
 
@@ -81,9 +82,13 @@ def parse_user_input(input_str):
         if "f=" in part:
             focus = re.split(r"f=", part, 1)[1]
         elif "s=" in part:
-            sources = re.split(r"s=", part, 1)[1].split(",")
+            source = re.split(r"s=", part, 1)[1].split(",")
 
-    return focus, sources
+    
+    return focus, source
+
+# def filter_trends(keywords: List[str], feature_type: FEATURE_TYPE = FEATURE_TYPE.GENERAL):   
+#        return feature_type.filter(keywords)
 
 
 def main():
@@ -100,11 +105,15 @@ def main():
 
     while True:
         try:
-            video_filename_path = os.path.join(TESTING_PATH, video_filename)
+            
             # Get input
-            focus, sources = parse_user_input(question)
-
-            # vlm_gaming.start_model(force_retrain=force_retrain, force_download_videos=force_download_videos, use_model_finetuned=use_model_finetuned, games_per_genre=games_per_genre)
+            video_filename_path = os.path.join(TESTING_PATH, video_filename)
+            focus, source = parse_user_input(question)
+            try: 
+                feature_type = getattr(FEATURE_TYPE, focus) if focus else FEATURE_TYPE.GENERAL
+                source_type = getattr(SOURCE_TYPE, source) if source else SOURCE_TYPE.UNKNOWN
+            except ValueError as ex:
+                raise RetryException
 
             # Classify genre using VLM
             genre = vlm_gaming.extract_genre(video_filename_path)
@@ -129,16 +138,22 @@ def main():
             reviews = llm_gaming.get_reviews(popular_games)
             print(reviews)
             
-            # Get sentiment for review
-            # Sentiments follow the structure: {
-                # Sentiment: [comments]
-            # }
             genre_comments = []
             for review_game in reviews.values():
                 for review_game_platform in review_game.values():
                     for review_game_platform_source in review_game_platform:
                         for review_game_platform_source_comments in review_game_platform_source.values():
                             genre_comments.extend(review_game_platform_source_comments)
+            
+            # # Translate reviews
+            # # Translations follow the structure: [comments]
+            # translated_genre_comments = llm_gaming.translate_comments(genre_comments)
+            # print(translated_genre_comments)
+            
+            # Get sentiment for review
+            # Sentiments follow the structure: {
+                # Sentiment: [comments]
+            # }
             sentiments = llm_gaming.get_sentiment_score(genre_comments)
             print(sentiments)
             
@@ -152,9 +167,12 @@ def main():
                 sentiments_with_trends[sentiment] = trends
             print(sentiments_with_trends)
             
-            # Extract features from video
-            # result = vlm_gaming.execute(video_filename_path)
-
+            # Filter keywords
+            filtered_trends = llm_gaming.filter_trends(Utility.merge_dict_values_to_list(sentiments_with_trends), feature_type)
+            
+            # Extract object features from video
+            detected_objects = vlm_gaming.execute(video_filename_path, filtered_trends)
+            print(detected_objects)
 
             # Ask if user wants to continue or ask something else
             question, video_filename = hello(QUESTION_TEMPLATE)

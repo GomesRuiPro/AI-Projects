@@ -2,7 +2,7 @@ from abc import ABC
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.local.scripts.entities.cached_script import CachedScript
 from innovation.FeedbackerAi.tools.local.scripts.entities.script import Script
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 class ScriptManager(ABC):
     
@@ -83,3 +83,29 @@ class ScriptManager(ABC):
     @staticmethod
     def get_video_comments(searchText, clip_resolution, clip_duration_seconds, games_per_genre_length, clip_uploaded_days_ago, output_path):
         pass
+    
+    @staticmethod
+    def translate_text(list_text: List[str], trg_lang='en'):
+        LIST_SEPARATOR = '[;]'
+        is_batching = False
+        text = list_text
+        
+        args =  ["--trg_lang=" + trg_lang]
+        if isinstance(list_text, List) and len(text) > 1:
+            is_batching = True
+            args.append("--list_separator=" + LIST_SEPARATOR)
+            text = LIST_SEPARATOR.join(list_text)
+        
+        script = Script("apis", "google_translator_api")
+        command = "translate"  
+        inputs = [text]
+        translated_text = script.execute(command, inputs, args)
+        
+        if is_batching:
+            translated_text = translated_text.split(LIST_SEPARATOR)
+            
+            if len(translated_text) != len(list_text):
+               raise Exception("The comments are not the same size after translation!")
+           
+        return translated_text
+        

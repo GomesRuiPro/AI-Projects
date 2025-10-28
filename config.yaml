@@ -20,6 +20,10 @@ main:
       models: none
       sources: ['metacritic']
       player: none
+    # do-translation:
+    #   models: 'facebook/nllb-200-distilled-600M'
+    #   sources: none
+    #   player: none
     do-sentiment-analysis:
       models: ['cardiffnlp/twitter-roberta-base-sentiment-latest']
       sources: none
@@ -29,11 +33,11 @@ main:
       sources: none
       player: none
     filter-keywords:
-      models: ['facebook/bart-large-mnli']
+      models: ['facebook/bart-large-mnli', 'microsoft/deberta-v3-base']
       sources: none
       player: none
     extract-video-object-detection-features:
-      models: none
+      models: ['openai/clip-vit-base-patch32']
       sources: none
       player: none
     extract-video-environment-features:
@@ -121,6 +125,17 @@ models:
     is_local: False
     is_enabled: True
     confidence_threshold: 0.5
+  translation:
+  - repository: google
+    name: mt5-base
+    is_local: False
+    is_enabled: False
+    confidence_threshold: 0.5
+  - repository: facebook
+    name: nllb-200-distilled-600M
+    is_local: False
+    is_enabled: False
+    confidence_threshold: 0.5
   sentiment_analysis:
   - repository: cardiffnlp
     name: twitter-roberta-base-sentiment-latest
@@ -154,13 +169,17 @@ models:
     is_local: False
     is_enabled: True
     confidence_threshold: 0.5
+  - repository: microsoft
+    name: deberta-v3-base
+    is_local: False
+    is_enabled: True
+    confidence_threshold: 0.5
   question_answer:
   - repository: deepset
     name: roberta-base-squad2
     is_local: False
     is_enabled: True
     confidence_threshold: 0.5
-  translation: none
   hugging_face_token: YOUR_HUGGING_FACE_TOKEN
 sources:
   external:

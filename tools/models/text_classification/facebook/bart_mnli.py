@@ -30,8 +30,9 @@ class BartMnli(TextModel):
         
         results = []
         for answer in answers:
-            if float(answer["score"]) > float(self.config["confidence_threshold"]):
-                results.append(answer["word"].lower())
+            if float(answer["scores"][0]) > float(self.config["confidence_threshold"]):
+                result: tuple = (answer["sequence"], answer["labels"][0].lower(), answer["scores"][0])
+                results.append(result)
         
         return set(results)
         

@@ -4,7 +4,8 @@ from torchvision import transforms
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel, AutoConfig
 from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 
 class Clip(VideoFeatureModel):
     
@@ -27,7 +28,7 @@ class Clip(VideoFeatureModel):
         self.processor = None
         self.class_names = []
 
-    def setup(self, num_frames_to_read=None, clip_duration_seconds=None, video_frame=None):
+    def setup(self,video_frame=None):
         # Init
         if self.config['is_local']:
             self.model = None
@@ -58,12 +59,10 @@ class Clip(VideoFeatureModel):
             ]
         )
 
-        self.num_frames_to_read = num_frames_to_read
         if "max_num_frames" in transform_params or self.num_frames_to_read is None:
             self.num_frames_to_read = transform_params["max_num_frames"]
 
         # The duration of the input clip is also specific to the model.
-        self.clip_duration_seconds = clip_duration_seconds
         if ("sampling_rate" in transform_params and "frames_per_second" in transform_params) or self.clip_duration_seconds is None:
             self.clip_duration_seconds = int(round(
                 (self.num_frames_to_read * transform_params["sampling_rate"])/transform_params["frames_per_second"]))
@@ -77,8 +76,27 @@ class Clip(VideoFeatureModel):
                     f"Warning: Operation is not available for {self.device}. Attempting with cpu...")
                 self.model = self.model.to('cpu')
 
-    def execute(self, num_frames_to_read, clip_duration_seconds):
-        super().execute(num_frames_to_read, clip_duration_seconds, self.inference)
+    def execute(self, video_frames):
+        super().execute(video_frames, self.inference)
+        
+    def get_predictions(self, video_frame, results):
+        predicted = {}
+        if self.class_names is None:
+                raise Exception("No 'id2label' attribute found in the config.")
+            
+        if self.to_debug:
+            print("Class labels:")
+            for idx, label in self.class_names.items():
+                print(f"{idx}: {label}")
+
+        for class_name in self.class_names:
+            if class_name not in predicted:
+                predicted[class_name] = 1
+            else:
+                predicted[class_name] += 1
+                
+        return {k: (lambda v: v / self.video_frames)(v)
+            for k, v in predicted.items()}
     
     # Make predictions
     def inference(self, video_frame):
@@ -102,5 +120,13 @@ class Clip(VideoFeatureModel):
             # # Get the top matching labels
             # probs = similarity.softmax(dim=0)
             # top_probs, top_labels = probs.topk(3)  # top 3 predictions
-        
-        return self.class_names, (text_features, image_features)
+            
+        if not text_features and not image_features:
+            return None
+            
+        return self.get_predictions({
+                'text': text_features,
+                'image': image_features
+            })
+
+    

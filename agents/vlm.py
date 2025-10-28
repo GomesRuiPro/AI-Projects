@@ -8,7 +8,7 @@ from innovation.FeedbackerAi.agents.tools_client import ToolsClient
 from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel, VideoModel, Model
 from innovation.FeedbackerAi.agents.agent import Agent
 from innovation.FeedbackerAi.agents.tools_client import Operation, ExecutionMode
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 VLM_CONFIG = Utility.load_yaml()["vlm"]
 
@@ -83,12 +83,12 @@ class VLMGaming(Agent):
             cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
             ret, frame = cap.read()
             if ret:
-                # if VLM_CONFIG['device_debug']:
-                #     print("Frame shape:", frame.shape)
-                #     print("Pixel at (0,0):", frame[0,0])
-                #     cv2.imshow('Frame', frame)
-                #     cv2.waitKey(0)
-                #     cv2.destroyAllWindows()
+                if VLM_CONFIG['device_debug']:
+                    print("Frame shape:", frame.shape)
+                    print("Pixel at (0,0):", frame[0,0])
+                    cv2.imshow('Frame', frame)
+                    cv2.waitKey(0)
+                    cv2.destroyAllWindows()
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Correct order
                 frame = torch.from_numpy(frame).float()  # shape: H x W x C
                 frame = frame.permute(2, 0, 1)  # shape: C x H x W
@@ -99,7 +99,7 @@ class VLMGaming(Agent):
 
         return frames
 
-    def EXTRACT_GENRE(self, video_path):
+    def extract_genre(self, video_path):
         self.tools_client.create(Operation.EXTRACT_GENRE)
         model_execution_mode = self.tools_client.models["execution_mode"]
         models = self.tools_client.models["entities"]
@@ -114,19 +114,45 @@ class VLMGaming(Agent):
         video_frames = self.__load_video(video_path)
         model.set_video(video_frames)
         return model.execute()
+    
+    def extract_object_features(self, video_path, text_prompts):
+        self.tools_client.create(Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES)
+        models_execution_mode = self.tools_client.models["execution_mode"]
+        models = self.tools_client.models["entities"]
 
-    def execute(self, video_path):
-        result = []
+        if not models:
+            return None
+        
+        if models_execution_mode == ExecutionMode.FALLBACK:
+            return models[0].execute()
 
+        models_answers: List[str] = []
         video_frames = self.__load_video(video_path)
-        extract_features_models = self.get_extract_features_models()
+        for model in models:
+            
+            # These have to passed after the model was created by the tools client because they are updated after reading the video
+            model.num_frames_to_read = VLMGaming.num_frames_to_read
+            model.clip_duration_seconds = VLMGaming.clip_duration_seconds
+            answers = model.execute((video_frames, text_prompts)) 
+            if not answers:
+                continue
+                    
+            models_answers.extends(answers)
+                
+        return models_answers
 
-        for extract_features_model in extract_features_models:
-            extract_features_model.set_video(video_frames)
-            features = extract_features_model.execute(
-                VLMGaming.num_frames_to_read, VLMGaming.clip_duration_seconds)
-            result.append({
-                'model': extract_features_model.model_name,
-                'features': features
-            })
-        return result
+    # def execute(self, video_path):
+    #     result = []
+
+    #     video_frames = self.__load_video(video_path)
+    #     extract_features_models = self.get_extract_features_models()
+
+    #     for extract_features_model in extract_features_models:
+    #         extract_features_model.set_video(video_frames)
+    #         features = extract_features_model.execute(
+    #             VLMGaming.num_frames_to_read, VLMGaming.clip_duration_seconds)
+    #         result.append({
+    #             'model': extract_features_model.model_name,
+    #             'features': features
+    #         })
+    #     return result

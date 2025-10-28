@@ -7,11 +7,14 @@ from innovation.FeedbackerAi.tools.models.conversation.openai.gpt2 import Gpt2
 from innovation.FeedbackerAi.tools.models.sentiment_analysis.cardiffnlp.twitter_roberta import TwitterRoberta
 from innovation.FeedbackerAi.tools.models.summarization.google.pegasus_xsum import PegasusXsum
 from innovation.FeedbackerAi.tools.models.feature_extraction.ml6team.keyphrase_extraction_kbir_inspec import KeyphraseExtractionKbirInspec
-from innovation.FeedbackerAi.tools.models.text_classification.facebook.bart_mnli import BartMnli
+from innovation.FeedbackerAi.tools.models.text_classification.facebook.bart_mnli import BartMnli as FacebookMNLI
+from innovation.FeedbackerAi.tools.models.text_classification.microsoft.deberta_mnli import DebertaMnli as MicrosoftMNLI
+from innovation.FeedbackerAi.tools.models.translation.google.mt5 import Mt5
+from innovation.FeedbackerAi.tools.models.translation.facebook.multilang_nllb import Multilang_Nllb
 from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.fallback.userinput.user_input import UserInput
 from innovation.FeedbackerAi.tools.models.fallback.donothing.do_nothing import DoNothing
-from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_CLASSIFICATION, MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VIDEO_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
+from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_TRANSLATION, MODEL_TEXT_CLASSIFICATION, MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VIDEO_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
 
 
 class Factory(ABC):
@@ -139,6 +142,25 @@ class SentimentAnalysisFactory(TextModelFactory, ABC):
         if SentimentAnalysisFactory.MODEL_TYPE.CARDIFFNLP_TWITTER_ROBERTA.value in self.model_config_name:
             return TwitterRoberta(model_to_run, self.token, model_name, pretrained, to_debug)
 
+class TranslationFactory(TextModelFactory, ABC):
+    
+    MODEL_TYPE = MODEL_TEXT_TRANSLATION
+        
+    def __init__(self, model_config_name, config, token=None):
+        super().__init__(model_config_name, config, token)
+
+    def create(self, pretrained, to_debug=0):
+        model_to_run = super().to_fallback("Translation")
+        if isinstance(model_to_run, Model):
+            return model_to_run
+
+        # do reflection here
+        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        if TranslationFactory.MODEL_TYPE.GOOGLE_MT5.value in self.model_config_name:
+            return Mt5(model_to_run, self.token, model_name, pretrained, to_debug)
+        if TranslationFactory.MODEL_TYPE.FACEBOOK_MULTILANG_NLLB.value in self.model_config_name:
+            return Multilang_Nllb(model_to_run, self.token, model_name, pretrained, to_debug)
+
 class SummarizationFactory(TextModelFactory, ABC):
     
     MODEL_TYPE = MODEL_TEXT_SUMMARIZATION
@@ -188,7 +210,9 @@ class TextclassificationFactory(TextModelFactory, ABC):
         # do reflection here
         model_name = model_to_run['repository']+"/"+model_to_run['name']
         if TextclassificationFactory.MODEL_TYPE.FACEBOOK_BART_MNLI.value in self.model_config_name:
-            return BartMnli(model_to_run, self.token, model_name, pretrained, to_debug)
+            return FacebookMNLI(model_to_run, self.token, model_name, pretrained, to_debug)
+        if TextclassificationFactory.MODEL_TYPE.MICROSOFT_DEBERTA_MNLI.value in self.model_config_name:
+            return MicrosoftMNLI(model_to_run, self.token, model_name, pretrained, to_debug)
     
 class QuestionAnswerFactory(TextModelFactory):
     

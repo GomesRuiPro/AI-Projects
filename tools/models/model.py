@@ -47,7 +47,8 @@ class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to ex
     def __init__(self, config, model_name, device, pretrained, to_debug):
         super().__init__(config, model_name)
         self.pretrained = pretrained
-        self.video_frames = None
+        self.num_frames_to_read = None
+        self.clip_duration_seconds = None
         self.to_debug = to_debug
         if 'cuda' in device:
             self.device = torch.device(
@@ -57,11 +58,8 @@ class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to ex
         # Set CUDA_LAUNCH_BLOCKING to '1' for debugging
         os.environ['CUDA_LAUNCH_BLOCKING'] = str(device)
 
-    def set_video(self, video_frames):
-        self.video_frames = video_frames
-
     @abstractmethod
-    def setup(self, num_frames_to_read=None, clip_duration_seconds=None, video_frame=None):
+    def setup(self, video_frames):
         pass
 
 
@@ -103,48 +101,53 @@ class VideoFeatureModel(VideoModel, ABC):
     #         probs = torch.nn.functional.softmax(outputs, dim=1)
     #         return torch.max(probs, dim=1)
 
-    def execute(self, num_frames_to_read, clip_duration_seconds, model_execute_fn=None):
+    def execute(self, video_frames, model_execute_fn=None):
         # Setup model
         if not self.model:
-            self.setup(num_frames_to_read, clip_duration_seconds,
-                       self.video_frames[0])
+            self.setup(self.num_frames_to_read, self.clip_duration_seconds,
+                       video_frames[0])
 
         # Set to evaluation mode
         self.model.eval()
 
-        predicted = {}
-        eval_xtimes = int(round(num_frames_to_read / clip_duration_seconds))
-        for index, video_frame in enumerate(self.video_frames):
+        # predicted = {}
+        eval_xtimes = int(round(self.num_frames_to_read / self.clip_duration_seconds))
+        for index, video_frame in enumerate(video_frames):
 
             if (index + 1) % eval_xtimes != 0:
                 continue
 
             # Get predictions
             if model_execute_fn:
-                class_names, results = model_execute_fn(video_frame)
+                results = model_execute_fn(video_frame)
             
             if results is None:
                 if self.to_debug:
                     print(f"No results founds in video_frame {index}")
                 continue
             
-            if class_names is None:
-                raise Exception("No 'id2label' attribute found in the config.")
+        if self.to_debug:
+            Utility.show_image(video_frame, results)
+
+        return results
             
-            if self.to_debug:
-                print("Class labels:")
-                for idx, label in class_names.items():
-                    print(f"{idx}: {label}")
+            # if class_names is None:
+            #     raise Exception("No 'id2label' attribute found in the config.")
+            
+            # if self.to_debug:
+            #     print("Class labels:")
+            #     for idx, label in class_names.items():
+            #         print(f"{idx}: {label}")
                 
-            if self.to_debug:
-                Utility.show_image(video_frame, results, class_names)
+            # if self.to_debug:
+            #     Utility.show_image(video_frame, results, class_names)
 
-            for class_name in class_names:
-                if class_name not in predicted:
-                    predicted[class_name] = 1
-                else:
-                    predicted[class_name] += 1
+            # for class_name in class_names:
+            #     if class_name not in predicted:
+            #         predicted[class_name] = 1
+            #     else:
+            #         predicted[class_name] += 1
 
-        predicted = {k: (lambda v: v / self.video_frames)(v)
-                     for k, v in predicted.items()}
+        # predicted = {k: (lambda v: v / self.video_frames)(v)
+        #              for k, v in predicted.items()}
         return predicted

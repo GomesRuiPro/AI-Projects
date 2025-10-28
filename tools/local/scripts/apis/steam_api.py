@@ -5,7 +5,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 from yt_dlp import YoutubeDL
 from googleapiclient.discovery import build
-from innovation.FeedbackerAi.tools.utilities import Utility
+from innovation.FeedbackerAi.tools.local.utilities import Utility
 import requests
 
 def get_game_reviews(app_id, api_key):

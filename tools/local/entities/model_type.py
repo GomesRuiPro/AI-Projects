@@ -32,6 +32,11 @@ class MODEL_TEXT_QUESTION_ANSWER(Enum):
     DEEPSET_SQUAD2 = "squad2"
     UNKNOWN = "unknown"
     
+class MODEL_TEXT_TRANSLATION(Enum):
+    GOOGLE_MT5 = "mt5"
+    FACEBOOK_MULTILANG_NLLB = "nllb"
+    UNKNOWN = "unknown"
+    
 class MODEL_TEXT_SENTIMENT_ANALYSIS(Enum):
     CARDIFFNLP_TWITTER_ROBERTA = "twitter-roberta"
     UNKNOWN = "unknown"
@@ -45,13 +50,15 @@ class MODEL_TEXT_FEATURE_EXTRACTION(Enum):
     UNKNOWN = "unknown"
     
 class MODEL_TEXT_CLASSIFICATION(Enum):
-    FACEBOOK_BART_MNLI = "bart-mnli"
+    FACEBOOK_BART_MNLI = "bart"
+    MICROSOFT_DEBERTA_MNLI = "deberta"
     UNKNOWN = "unknown"
     
 class MODEL_TEXT(Enum):
     CONVERSATION = "conversation"
     QUESTION_ANSWER = "question-answer"
     SENTIMENT_ANALYSIS = "sentiment-analysis"
+    TRANSLATION = "translation"
     SUMMARIZATION = "summarization"
     FEATURE_EXTRACTION = "feature-extraction"
     TEXT_CLASSIFICATION = "text-classification"

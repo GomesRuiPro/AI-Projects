@@ -145,6 +145,20 @@ class Utility:
         """
         words = re.split(r'[\s_\-]+', s)
         return ''.join(word.capitalize() for word in words)
+    
+    @staticmethod
+    def intersect_lists_by_strings(list1, list2):
+        """
+        Returns a set of strings that are present in both lists.
+        
+        Args:
+            list1 (list): The first list of strings.
+            list2 (list): The second list of strings.
+        
+        Returns:
+            set: A set of strings that are present in both lists.
+        """
+        return set(list1) & set(list2)
 
     # DATE/TIME #
     
@@ -168,6 +182,13 @@ class Utility:
         return int(td.total_seconds())
     
     # CONVERTERS #
+    
+    @staticmethod
+    def merge_dict_values_to_list(dict: Dict[Any, Any]):
+        merged = []
+        for d in dict.values():
+            merged.extend(d)
+        return merged
     
     @staticmethod
     def merge_list_of_dicts(dicts: List[Dict[Any, Any]]) -> Dict[Any, List[Any]]:

@@ -7,7 +7,7 @@ from innovation.FeedbackerAi.tools.players.fallback.userinput.user_input import 
 from innovation.FeedbackerAi.tools.sources.source import Source
 from innovation.FeedbackerAi.tools.players.player import Player
 from innovation.FeedbackerAi.tools.models.model import Model
-from innovation.FeedbackerAi.tools.models.client import ModelClient, Conversation, QuestionAnswer, VideoClassification, SentimentAnalysis, Summarization, FeatureExtraction
+from innovation.FeedbackerAi.tools.models.client import ModelClient, Translation, TextClassification, ObjectDetection, Conversation, QuestionAnswer, VideoClassification, SentimentAnalysis, Summarization, FeatureExtraction
 from innovation.FeedbackerAi.tools.players.client import PlayerClient, GenericPlayer, GamingPlayer
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
@@ -21,8 +21,10 @@ class Operation:
     GET_FEATURES = "get-features"
     GET_GAMES = "get-games"
     GET_REVIEWS = "get-reviews"
+    # DO_TRANSLATION = "do-translation"
     DO_SENTIMENT_ANALYSIS = "do-sentiment-analysis"
     GET_KEYWORDS = "get-keywords"
+    FILTER_KEYWORDS = "filter-keywords"
     DO_SUMMARIZATION = "do-summarization"
     EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES = "extract-video-object-detection-features"
     EXTRACT_VIDEO_ENVIRONMENT_FEATURES = "extract-video-environment-features"
@@ -60,13 +62,20 @@ class ToolsFactory(ABC):
             elif models_config.lower() == "fallback":
                 return None, ExecutionMode.FALLBACK
             else:
-                raise Exception("Model {models_config} is not available")
+                if execution_mode == ExecutionMode.MULTIPLE:
+                    raise Exception("Model {models_config} is not available")
         
-        if execution_mode == ExecutionMode.SINGLE and len(models_config) > 1:
-            raise Exception("This operation only allows 1 model")
+        if execution_mode == ExecutionMode.SINGLE:
+            if isinstance(models_config, List):
+                if len(models_config) > 1:
+                    raise Exception("This operation only allows 1 model")
         
-        if execution_mode == ExecutionMode.MULTIPLE and len(models_config) <= 1:
-            raise Exception("This operation is expected to run more than 1 model")
+        if execution_mode == ExecutionMode.MULTIPLE:
+            if isinstance(models_config, List):
+                if len(models_config) <= 1:
+                    raise Exception("This operation is expected to run more than 1 model")
+            else:
+                raise Exception("This operation is expected to run more than 1 model")
             
         return models_config, execution_mode
         
@@ -82,13 +91,18 @@ class ToolsFactory(ABC):
             elif sources_config.lower() == "fallback":
                 return None, ExecutionMode.FALLBACK
             else:
-                raise Exception("Source {sources_config} is not available")
+                if execution_mode == ExecutionMode.MULTIPLE:
+                    raise Exception("Source {sources_config} is not available")
         
-        if execution_mode == ExecutionMode.SINGLE and len(sources_config) > 1:
-            raise Exception("This operation only allows 1 model")
+        if execution_mode == ExecutionMode.SINGLE:
+            if isinstance(sources_config, List):
+                if len(sources_config) > 1:
+                    raise Exception("This operation only allows 1 source")
         
-        if execution_mode == ExecutionMode.MULTIPLE and len(sources_config) <= 1:
-            raise Exception("This operation is expected to run more than 1 model")
+        if execution_mode == ExecutionMode.MULTIPLE:
+            if isinstance(sources_config, List):
+                if len(sources_config) <= 1:
+                    raise Exception("This operation is expected to run more than 1 source")
         
         # NEEDS REFACTORING - creates a lot of dependencies = ENUM needs to match the CLASS name. Reflection is not a good option
         if sources_config:
@@ -120,9 +134,9 @@ class ToolsFactory(ABC):
 class GetGenreFactory(ToolsFactory):
         
     def createModels(self):
-        model_config_names, execution_mode = super().createModels()
+        model_config_name, execution_mode = super().createModels()
                     
-        model = VideoClassification.create(model_config_names, 
+        model = VideoClassification.create(model_config_name, 
                                             self.bot_config["use_model_finetuned"], 
                                             self.bot_config["device_debug"], 
                                             self.bot_config["device_type"])
@@ -137,6 +151,16 @@ class GetReviewsFactory(ToolsFactory):
     
     def createSources(self):
         return super().createSources()
+
+# class DoTranslationFactory(ToolsFactory):
+    
+#     def createModels(self):
+#         model_config_name, execution_mode = super().createModels()
+                    
+#         model = Translation.create(model_config_name, 
+#                                             self.bot_config["use_model_finetuned"], 
+#                                             self.bot_config["device_debug"])
+#         return [model], execution_mode
         
 class DoSentimentAnalysisFactory(ToolsFactory):
     def createModels(self):
@@ -160,6 +184,29 @@ class GetKeywordsFactory(ToolsFactory):
                                                 self.bot_config["device_debug"]))
         return models, execution_mode
     
+class FilterKeywordsFactory(ToolsFactory):
+    def createModels(self):
+        model_config_names, execution_mode = super().createModels(ExecutionMode.MULTIPLE)
+        
+        models = []     
+        for model_config_name in model_config_names:
+            models.append(TextClassification.create(model_config_name, 
+                                                self.bot_config["use_model_finetuned"], 
+                                                self.bot_config["device_debug"]))
+        return models, execution_mode
+    
+class ExtractObjectFeaturesFactory(ToolsFactory):
+    def createModels(self):
+        model_config_names, execution_mode = super().createModels()
+        
+        models = []     
+        for model_config_name in model_config_names:
+            models.append(ObjectDetection.create(model_config_name, 
+                                                self.bot_config["use_model_finetuned"], 
+                                                self.bot_config["device_debug"], 
+                                                self.bot_config["device_type"]))
+        return models, execution_mode
+    
 class ToolsClient:
     
     def __init__(self, workflow_config, bot_config):
@@ -171,16 +218,23 @@ class ToolsClient:
         workflow_config_operation = self.workflow_config[bot_operation]
         
         # ADD ALL STEPS DONE BY THE BOT
+        print(f"--- {bot_operation} ---")
         if bot_operation == Operation.EXTRACT_GENRE:
             factory = GetGenreFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.GET_GAMES:
             factory = GetGamesFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.GET_REVIEWS:
             factory = GetReviewsFactory(workflow_config_operation, self.bot_config)
+        # elif bot_operation == Operation.DO_TRANSLATION:
+        #     factory = DoTranslationFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.DO_SENTIMENT_ANALYSIS:
             factory = DoSentimentAnalysisFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.GET_KEYWORDS:
             factory = GetKeywordsFactory(workflow_config_operation, self.bot_config)
+        elif bot_operation == Operation.FILTER_KEYWORDS:
+            factory = FilterKeywordsFactory(workflow_config_operation, self.bot_config)
+        elif bot_operation == Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES:
+            factory = ExtractObjectFeaturesFactory(workflow_config_operation, self.bot_config)          
         else:
             raise Exception(f"{bot_operation.name} has not been implement nor exists.")
 

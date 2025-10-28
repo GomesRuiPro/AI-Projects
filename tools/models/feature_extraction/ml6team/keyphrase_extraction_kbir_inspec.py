@@ -30,7 +30,7 @@ class KeyphraseExtractionKbirInspec(TextModel):
         results = []
         for answer in answers:
             if float(answer["score"]) > float(self.config["confidence_threshold"]):
-                results.append(answer["word"].lower())
+                results.append(answer["word"].lower().strip())
         
         return set(results)
         

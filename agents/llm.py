@@ -9,6 +9,9 @@ from innovation.FeedbackerAi.agents.tools_client import Operation, ToolsFactory,
 from innovation.FeedbackerAi.agents.agent import Agent
 from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
 from typing import Optional, Dict, Any, List
+from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE
+from innovation.FeedbackerAi.tools.local.entities.feature_type import TYPE as FEATURE_TYPE
+from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
 
 LLM_CONFIG = Utility.load_yaml()["llm"]
 
@@ -40,29 +43,6 @@ class LLMGaming(Agent):
         #     elif "source" in with_feature:
         #         if with_feature == "with_source_games":
         #             self.source_clients["games"] = GamesSource.create()
-
-    def get_source_client(self, source_type):
-        return self.source_clients[source_type]
-
-    def get_source_clients(self):
-        return self.source_clients
-    
-    # def get_trends(self, genre):
-    #     context = f"I am trying to understand the player behavior and how it is moving torwards the future of {genre} videogames. I would like to know what players comment in social mediawould like to see more and less for future videogames."
-    #     question = f"What are the currently most hated features and the most desired features in this {genre}?"
-    #     model = self.get_model("question_answer")
-    #     return model.execute((question,context))
-    
-    # def get_trends(self, genre):
-    #     question = f"What gameplay features should a {genre} video game have? Give me a list of the most 10 popular features splitted by commas."
-    #     model = self.get_model("conversation")
-    #     return model.execute(question)
-    
-    # def get_trends(self, genre):
-    #     query = f"Best {genre} games of this month"
-        
-        
-    #     Utility.get_video_comments("")
     
     def get_popular_games(self, genre: str, max_results=10):
         self.tools_client.create(Operation.GET_GAMES)
@@ -105,6 +85,9 @@ class LLMGaming(Agent):
             games_sources_reviews[game] = sources_reviews_merged
         return games_sources_reviews
     
+    def translate_comments(self, comments):   
+        return [ScriptManager.translate_text(comment) for comment in comments]
+    
     def get_sentiment_score(self, comments: List[str]):
         self.tools_client.create(Operation.DO_SENTIMENT_ANALYSIS)
         models_execution_mode = self.tools_client.models["execution_mode"]
@@ -124,10 +107,11 @@ class LLMGaming(Agent):
             "NEUTRAL": []
         }
         
-        for comment in comments:
+        translated_comments = ScriptManager.translate_text(comments)
+        for translated_comment in translated_comments:
             confidence_threshold_model = None
             for model in models:
-                answer = model.execute(comment)
+                answer = model.execute(translated_comment)
                 
                 if not answer:
                     continue
@@ -145,7 +129,7 @@ class LLMGaming(Agent):
                         print("Invalid sentiment: {answer_sentiment}")
                         sentiment = REVIEW_SENTIMENT.UNKNOWN
                     
-                    models_answers[sentiment.name].append(comment)
+                    models_answers[sentiment.name].append(translated_comment)
                     confidence_threshold_model = float(answer_score)
                 
         return models_answers
@@ -174,7 +158,32 @@ class LLMGaming(Agent):
                 models_answers.extend(answers)
                 
         return models_answers
+    
+    def filter_trends(self, keywords: List[str], focus: FEATURE_TYPE = FEATURE_TYPE.GENERAL):
+        
+        self.tools_client.create(Operation.FILTER_KEYWORDS)
+        models_execution_mode = self.tools_client.models["execution_mode"]
+        models = self.tools_client.models["entities"]
+
+        if not models:
+            return None
+        
+        if models_execution_mode == ExecutionMode.FALLBACK:
+            return models[0].execute()
+           
+        models_answers: List[str] = []
+        for model in models:
+            answers = model.execute((keywords, focus.get_features_names()))
             
+            if not answers:
+                continue
+            
+            if not models_answers:
+                models_answers = Utility.get_list_by_column(answers, 0)
+                continue
+            
+            models_answers = Utility.intersect_lists_by_strings(models_answers, Utility.get_list_by_column(answers, 0))    
+        return models_answers
         
  # def generate_search_queries(self, query, number_of_results=1):
     #     question_llm_template = (

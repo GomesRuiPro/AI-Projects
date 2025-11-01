@@ -15,64 +15,73 @@ from typing import Protocol
 #     def get_child(self):
 #         return self.child
 
-class Child:
-    pass
+class SOURCE_TYPE(Enum):
+    def __init__(self, description, subsources: Enum = None):
+        super().__init__()
+        self.description = description
+        self.subsources = subsources
     
-class SOURCE_INTERNAL_DATABASE(Child, Enum):
+    @classmethod
+    def __getitem__(cls, item):
+        # Override to make lookups case-insensitive
+        item = item.upper()
+        return super().__getitem__(item)
+    
+class SOURCE_INTERNAL_DATABASE(SOURCE_TYPE):
     SQLITE = "sqlite3"
     UNKNOWN = "unknown"
     
-    def parent(self) -> Child:
+    def parent(self) -> SOURCE_TYPE:
         return SOURCE_INTERNAL, SOURCE_INTERNAL.DATABASE
     
     def get_client(self):
         from innovation.FeedbackerAi.tools.sources.client import Database
         return Database
     
-class SOURCE_INTERNAL(Child, Enum):
+class SOURCE_INTERNAL(SOURCE_TYPE):
     DATABASE = "database", SOURCE_INTERNAL_DATABASE
-    UNKNOWN = "unknown", None
+    UNKNOWN = "unknown"
     
-    def parent(self) -> Child:
+    def parent(self) -> SOURCE_TYPE:
         return SOURCE, SOURCE.INTERNAL
     
-class SOURCE_EXTERNAL_WEBSITE(Child, Enum):
+class SOURCE_EXTERNAL_WEBSITE(SOURCE_TYPE):
     METACRITIC = "metacritic"
     STEAMCHARTS = "steamcharts"
     STEAMDB = "steamdb"
     UNKNOWN = "unknown"
 
-    def parent(self) -> Child:
+    def parent(self) -> SOURCE_TYPE:
         return SOURCE_EXTERNAL, SOURCE_EXTERNAL.WEBSITE
     
     def get_client(self):
         from innovation.FeedbackerAi.tools.sources.client import Webpage
         return Webpage
     
-class SOURCE_EXTERNAL_API(Child, Enum):
+class SOURCE_EXTERNAL_API(SOURCE_TYPE):
     YOUTUBE = "youtube"
     STEAM = "steam"
     UNKNOWN = "unknown"
         
-    def parent(self) -> Child:
+    def parent(self) -> SOURCE_TYPE:
         return SOURCE_EXTERNAL, SOURCE_EXTERNAL.API
     
     def get_client(self):
         from innovation.FeedbackerAi.tools.sources.client import Api
         return Api
     
-class SOURCE_EXTERNAL(Child, Enum):
+class SOURCE_EXTERNAL(SOURCE_TYPE):
     WEBSITE = "website", SOURCE_EXTERNAL_WEBSITE
     API = "api", SOURCE_EXTERNAL_API
-    UNKNOWN = "unknown", None
+    UNKNOWN = "unknown"
     
-    def parent(self) -> Child:
+    def parent(self) -> SOURCE_TYPE:
         return SOURCE, SOURCE.EXTERNAL
     
 class SOURCE(Enum):
     INTERNAL = "internal", SOURCE_INTERNAL
     EXTERNAL = "external", SOURCE_EXTERNAL
-    UNKNOWN = "unknown", None
+    UNKNOWN = "unknown"
     
     def parent(self):
         return None, SOURCE
@@ -81,10 +90,10 @@ class SOURCE(Enum):
 # available_children = all the bottom/leaf children 
 # number_of_levels = levels you want to recurse (by default - goes until the highest parent/branch)
 def recurse_bottom_to_top(bottom_name: str, 
-                          available_children: List[Child] = [SOURCE_INTERNAL_DATABASE, SOURCE_EXTERNAL_WEBSITE, SOURCE_EXTERNAL_API],
+                          available_children: List[SOURCE_TYPE] = [SOURCE_INTERNAL_DATABASE, SOURCE_EXTERNAL_WEBSITE, SOURCE_EXTERNAL_API],
                           number_of_levels: int = 3) -> Enum:
     
-    found_source_type: Child = None
+    found_source_type: SOURCE_TYPE = None
     
     if not available_children:
         return SOURCE(bottom_name)
@@ -109,3 +118,4 @@ def recurse_bottom_to_top(bottom_name: str,
 
     parent_of_this_child, parent_name_of_this_child = found_source_type.parent()
     return recurse_bottom_to_top(parent_name_of_this_child.name, [parent_of_this_child], number_of_levels)
+

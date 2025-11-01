@@ -7,7 +7,7 @@ from innovation.FeedbackerAi.tools.players.fallback.userinput.user_input import 
 from innovation.FeedbackerAi.tools.sources.source import Source
 from innovation.FeedbackerAi.tools.players.player import Player
 from innovation.FeedbackerAi.tools.models.model import Model
-from innovation.FeedbackerAi.tools.models.client import ModelClient, Translation, TextClassification, ObjectDetection, Conversation, QuestionAnswer, VideoClassification, SentimentAnalysis, Summarization, FeatureExtraction
+from innovation.FeedbackerAi.tools.models.client import ModelClient, Translation, TextClassification, ObjectDetection, Conversation, QuestionAnswer, VisualClassification, SentimentAnalysis, Summarization, FeatureExtraction
 from innovation.FeedbackerAi.tools.players.client import PlayerClient, GenericPlayer, GamingPlayer
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
@@ -23,8 +23,8 @@ class Operation:
     GET_REVIEWS = "get-reviews"
     # DO_TRANSLATION = "do-translation"
     DO_SENTIMENT_ANALYSIS = "do-sentiment-analysis"
-    GET_KEYWORDS = "get-keywords"
-    FILTER_KEYWORDS = "filter-keywords"
+    GET_TRENDS = "get-trends"
+    CLASSIFY_TRENDS = "classify-trends"
     DO_SUMMARIZATION = "do-summarization"
     EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES = "extract-video-object-detection-features"
     EXTRACT_VIDEO_ENVIRONMENT_FEATURES = "extract-video-environment-features"
@@ -136,7 +136,7 @@ class GetGenreFactory(ToolsFactory):
     def createModels(self):
         model_config_name, execution_mode = super().createModels()
                     
-        model = VideoClassification.create(model_config_name, 
+        model = VisualClassification.create(model_config_name, 
                                             self.bot_config["use_model_finetuned"], 
                                             self.bot_config["device_debug"], 
                                             self.bot_config["device_type"])
@@ -173,7 +173,7 @@ class DoSentimentAnalysisFactory(ToolsFactory):
                                                 self.bot_config["device_debug"]))
         return models, execution_mode
     
-class GetKeywordsFactory(ToolsFactory):
+class GetTrendsFactory(ToolsFactory):
     def createModels(self):
         model_config_names, execution_mode = super().createModels()
         
@@ -184,7 +184,7 @@ class GetKeywordsFactory(ToolsFactory):
                                                 self.bot_config["device_debug"]))
         return models, execution_mode
     
-class FilterKeywordsFactory(ToolsFactory):
+class ClassifyTrendsFactory(ToolsFactory):
     def createModels(self):
         model_config_names, execution_mode = super().createModels(ExecutionMode.MULTIPLE)
         
@@ -229,10 +229,10 @@ class ToolsClient:
         #     factory = DoTranslationFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.DO_SENTIMENT_ANALYSIS:
             factory = DoSentimentAnalysisFactory(workflow_config_operation, self.bot_config)
-        elif bot_operation == Operation.GET_KEYWORDS:
-            factory = GetKeywordsFactory(workflow_config_operation, self.bot_config)
-        elif bot_operation == Operation.FILTER_KEYWORDS:
-            factory = FilterKeywordsFactory(workflow_config_operation, self.bot_config)
+        elif bot_operation == Operation.GET_TRENDS:
+            factory = GetTrendsFactory(workflow_config_operation, self.bot_config)
+        elif bot_operation == Operation.CLASSIFY_TRENDS:
+            factory = ClassifyTrendsFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES:
             factory = ExtractObjectFeaturesFactory(workflow_config_operation, self.bot_config)          
         else:

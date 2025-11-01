@@ -2,7 +2,7 @@ import os
 from innovation.FeedbackerAi.tools.sources.source import Webpage
 from innovation.FeedbackerAi.tools.local.entities.platform import PLATFORM
 from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
-from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, SUBGENRE
+from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, GENRE_TYPE
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
 from typing import Optional, Dict, Any
@@ -36,7 +36,7 @@ class MetacriticClient():
     def extract_genres(self):
         pass
         
-    def get_games(self, genre: str, year_min: int, year_max: int, max_results: int, sort_by="userscore"):
+    def get_games(self, genre: str, year_min: int, year_max: int, max_results: int, sort_by="userscore", number_of_attempts: int = 3):
         
         # Setting url
         release_year = ["current-year",""] if year_min == year_max else ["all_time",f"releaseYearMin={year_min}&releaseYearMax={year_max}&"]
@@ -49,9 +49,16 @@ class MetacriticClient():
         parent_ui_component.add(Webpage.Leaf(attr_to_fetch="href", _class="c-finderProductCard_container g-color-gray80 u-grid"))
         self.webpage.ui_component = parent_ui_component
         
-        games_hrefs = ScriptManager.scrappe_url(self.webpage, max_results)[0][0] # Gives a list of a dict with the key href. since memento is off, we will only get one row
+        games_hrefs = ScriptManager.scrappe_url(self.webpage, max_results) # Gives a list of a dict with the key href. since memento is off, we will only get one row
         
-        games_hrefs_list = games_hrefs['href']
+        if number_of_attempts == 0:
+            raise Exception("No games were found in Metacritic")
+        if not games_hrefs:
+            number_of_attempts = number_of_attempts-1
+            year_min = year_min-1
+            return self.get_games(genre, year_min, year_max, max_results, sort_by, number_of_attempts)
+        
+        games_hrefs_list = games_hrefs[0][0]['href']
         games = []
         for game_href in games_hrefs_list:
             games.append(game_href.split("/")[2])
@@ -86,9 +93,9 @@ class MetacriticClient():
                     source_type.name: []
                 }
                 
-                reviews_spans = ScriptManager.scrappe_url(self.webpage, max_results_per_call)[0][0]
+                reviews_spans = ScriptManager.scrappe_url(self.webpage, max_results_per_call)
                 
-                reviews_spans_list = reviews_spans['span']
+                reviews_spans_list = reviews_spans[0][0]['span']
                 for review_span in reviews_spans_list:
                     reviews[platform.name][source_type.name].append(review_span)
                 

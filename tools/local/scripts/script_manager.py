@@ -59,8 +59,8 @@ class ScriptManager(ABC):
         inputs = [webpage.domain, webpage.resource]
         script.execute("", inputs, args)
         
-        if not script.output:
-            raise Exception("No results were found from the url scrapping!")
+        # if not script.output:
+        #     raise Exception("No results were found from the url scrapping!")
         
         
         return script.output

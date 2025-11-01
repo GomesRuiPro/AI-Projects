@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from innovation.FeedbackerAi.tools.models.factory import TranslationFactory, TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VideoClassificationFactory, ObjectFactory, SentimentAnalysisFactory
+from innovation.FeedbackerAi.tools.models.factory import TranslationFactory, TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VisualClassificationFactory, ObjectFactory, SentimentAnalysisFactory
 
 MODELS_CONFIG = Utility.load_yaml()["models"]
 
@@ -124,12 +124,12 @@ class Environment(VisualModelClient):
         config = MODELS_CONFIG['environment']
 
 
-class VideoClassification(VisualModelClient):
+class VisualClassification(VisualModelClient):
 
     @staticmethod
     def create(model_config_name, use_model_finetuned, device_debug, device_type):
         config = MODELS_CONFIG['video_classification']
-        videoClassificationFactory = VideoClassificationFactory(model_config_name, config)
-        ModelClient.model = videoClassificationFactory.create(
+        visualClassificationFactory = VisualClassificationFactory(model_config_name, config)
+        ModelClient.model = visualClassificationFactory.create(
             device_type, use_model_finetuned, device_debug)
         return ModelClient.model

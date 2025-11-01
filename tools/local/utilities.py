@@ -11,11 +11,19 @@ from typing import Optional, Dict, Any, List
 import importlib
 import inspect
 from collections import defaultdict
+from innovation.FeedbackerAi.tools.local.logger.logger import LoggerFactory
 
 
 class Utility:
     
     # MISC #
+    
+    @staticmethod
+    def log(message, is_debug = True):
+        if is_debug:
+            LoggerFactory.logger.debug(message)
+        else:
+            LoggerFactory.logger.info(message)
     
     @staticmethod
     def call_lambda(method_to_call, method_args=None):
@@ -74,15 +82,33 @@ class Utility:
 
         if cls:
             if isinstance(obj, cls):
-                print("obj is an instance of", class_name)
+                Utility.log("obj is an instance of", class_name)
             else:
-                print("obj is NOT an instance of", class_name)
+                Utility.log("obj is NOT an instance of", class_name)
         else:
-            print(f"Class {class_name} not found")
+            Utility.log(f"Class {class_name} not found")
 
     @staticmethod
     def get_list_by_column(matrix, column_idx):
         return [row[column_idx] for row in matrix]
+    
+    @staticmethod
+    def get_list_tuples_with_max_value(list1, list2, param_match_index, param_max_index):
+        # Create a set of field values from list1
+        set1 = {t[param_match_index] for t in list1}
+        # Create a set of field values from list2
+        set2 = {t[param_match_index] for t in list2}
+        # Find common field values
+        common_values = set1.intersection(set2)
+        
+        # Filter tuples in list1 that match the common values
+        intersected_list1 = [t for t in list1 if t[param_match_index] in common_values]
+        # Filter tuples in list2 that match the common values
+        intersected_list2 = [t for t in list2 if t[param_match_index] in common_values]
+        
+        combined_list = intersected_list1 + intersected_list2
+        max_value = max(t[param_max_index] for t in combined_list)
+        return [t for t in combined_list if t[param_max_index] == max_value]
     
     # STRING #
     
@@ -320,9 +346,7 @@ class Utility:
         elif isinstance(data, list):
             for item in data:
                 results.extend(Utility.find_maps_with_key(item, target_key))
-        return results
-        
-        
+        return results        
 
     @staticmethod
     def rename_file(file_path, extra, is_to_rename=False):
@@ -341,7 +365,7 @@ class Utility:
     def remove_file(file_path):
         try:
             os.remove(file_path)
-            print(f"Removed file {file_path}")
+            Utility.log(f"Removed file {file_path}")
         except FileNotFoundError as e:
             print(f"The file '{file_path}' does not exist.")
             raise e
@@ -371,7 +395,7 @@ class Utility:
             # Create and write to the file
             with open(file_path, "w") as f:
                 f.write(content)
-            print(f"Created file {file_path}")
+            Utility.log(f"Created file {file_path}")
             return file_path
         except Exception as e:
             print(f"Error creating file: {e}")
@@ -389,7 +413,7 @@ class Utility:
         try:
             with open(file_path, "a") as f:
                 f.write("\n"+new_content)  # Adds a new line after the content
-            print(f"Content appended to {file_path}")
+            Utility.log(f"Content appended to {file_path}")
         except Exception as e:
             raise Exception(f"Error appending to file: {e}")
     

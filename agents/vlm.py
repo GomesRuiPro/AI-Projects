@@ -8,6 +8,8 @@ from innovation.FeedbackerAi.agents.tools_client import ToolsClient
 from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel, VideoModel, Model
 from innovation.FeedbackerAi.agents.agent import Agent
 from innovation.FeedbackerAi.agents.tools_client import Operation, ExecutionMode
+from innovation.FeedbackerAi.tools.models.fallback.userinput.user_input import UserInput
+from innovation.FeedbackerAi.tools.local.entities.genre import GENRE
 from typing import Optional, Dict, Any, List
 
 VLM_CONFIG = Utility.load_yaml()["vlm"]
@@ -109,6 +111,8 @@ class VLMGaming(Agent):
                 
         model = models[0]
         if model_execution_mode == ExecutionMode.FALLBACK:
+            if isinstance(model, UserInput):
+                model.available_options = GENRE
             return model.execute()
         
         video_frames = self.__load_video(video_path)

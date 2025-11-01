@@ -10,8 +10,10 @@ from innovation.FeedbackerAi.agents.agent import Agent
 from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
 from typing import Optional, Dict, Any, List
 from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE
-from innovation.FeedbackerAi.tools.local.entities.feature_type import TYPE as FEATURE_TYPE
+from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE_TYPE
 from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
+from innovation.FeedbackerAi.tools.local.entities.review import Review, Trend
+import copy
 
 LLM_CONFIG = Utility.load_yaml()["llm"]
 
@@ -134,9 +136,51 @@ class LLMGaming(Agent):
                 
         return models_answers
     
+    def set_sentiment_score(self, reviews: List[Review]):
+        self.tools_client.create(Operation.DO_SENTIMENT_ANALYSIS)
+        models_execution_mode = self.tools_client.models["execution_mode"]
+        models = self.tools_client.models["entities"]
+
+        if not models:
+            return None
+        
+        if models_execution_mode == ExecutionMode.FALLBACK:
+            return models[0].execute()
+        
+        comments = [review.text for review in reviews]
+        translated_comments = ScriptManager.translate_text(comments)
+
+        idx = 0
+        for translated_comment in translated_comments:
+            confidence_threshold_model = None
+            for model in models:
+                answer = model.execute(translated_comment)
+                
+                if not answer:
+                    continue
+                
+                answer_sentiment, answer_score = answer
+                sentiment = REVIEW_SENTIMENT.UNKNOWN
+                
+                if not confidence_threshold_model:
+                    confidence_threshold_model = float(answer_score)
+                    
+                if float(answer_score) >= confidence_threshold_model: # In case positive and negative scores from different models are very close
+                    try:
+                        sentiment = REVIEW_SENTIMENT(answer_sentiment)
+                    except Exception as ex:
+                        print("Invalid sentiment: {answer_sentiment}")
+                        sentiment = REVIEW_SENTIMENT.UNKNOWN
+                    
+                    # models_answers[sentiment.name].append(translated_comment)
+                    confidence_threshold_model = float(answer_score)
+                    reviews[idx].text = translated_comment
+                    reviews[idx].sentiment = sentiment
+            idx = idx+1
+    
     def get_trends(self, comments: List[str]):
         
-        self.tools_client.create(Operation.GET_KEYWORDS)
+        self.tools_client.create(Operation.GET_TRENDS)
         models_execution_mode = self.tools_client.models["execution_mode"]
         models = self.tools_client.models["entities"]
 
@@ -146,7 +190,7 @@ class LLMGaming(Agent):
         if models_execution_mode == ExecutionMode.FALLBACK:
             return models[0].execute()
            
-        models_answers: List[str] = []
+        models_answers: List[Trend] = []
         
         for comment in comments:
             for model in models:
@@ -155,13 +199,41 @@ class LLMGaming(Agent):
                 if not answers:
                     continue
                     
-                models_answers.extend(answers)
+                models_answers.extend([Trend(answer) for answer in answers])
                 
         return models_answers
     
-    def filter_trends(self, keywords: List[str], focus: FEATURE_TYPE = FEATURE_TYPE.GENERAL):
+    def set_trends(self, reviews: List[Review]):
         
-        self.tools_client.create(Operation.FILTER_KEYWORDS)
+        self.tools_client.create(Operation.GET_TRENDS)
+        models_execution_mode = self.tools_client.models["execution_mode"]
+        models = self.tools_client.models["entities"]
+
+        if not models:
+            return None
+        
+        if models_execution_mode == ExecutionMode.FALLBACK:
+            return models[0].execute()
+        
+        filtered_reviews = []   
+        for review in reviews:
+            for model in models:
+                answers = model.execute(review.text)
+                
+                if not answers:
+                    continue
+                
+                filtered_review = copy.deepcopy(review)
+                trends = [Trend(answer) for answer in answers]
+                filtered_review.trends.update(trends)
+                filtered_reviews.append(filtered_review)
+                
+        reviews.clear()
+        reviews.extend(filtered_reviews)
+    
+    def classify_trends(self, reviews: List[Review], focus: FEATURE = FEATURE.GENERAL):
+        
+        self.tools_client.create(Operation.CLASSIFY_TRENDS)
         models_execution_mode = self.tools_client.models["execution_mode"]
         models = self.tools_client.models["entities"]
 
@@ -171,19 +243,37 @@ class LLMGaming(Agent):
         if models_execution_mode == ExecutionMode.FALLBACK:
             return models[0].execute()
            
-        models_answers: List[str] = []
-        for model in models:
-            answers = model.execute((keywords, focus.get_features_names()))
-            
-            if not answers:
-                continue
-            
-            if not models_answers:
-                models_answers = Utility.get_list_by_column(answers, 0)
-                continue
-            
-            models_answers = Utility.intersect_lists_by_strings(models_answers, Utility.get_list_by_column(answers, 0))    
-        return models_answers
+        filtered_reviews: List[Review] = []
+        for review in reviews:
+            model_answers = []
+            classified_trends: List[Trend] = []
+            trends = review.trends
+            for model in models:
+                focus_subfeatures_descriptions: List[str] = focus.get_subfeatures_descriptions()
+                answers = model.execute(([trend.name for trend in trends], focus_subfeatures_descriptions))
+
+                if not answers:
+                    continue
+                
+                
+                if not model_answers:
+                    model_answers.extend(answers)
+                    continue
+                    
+                filtered_review = copy.deepcopy(review)
+                model_answers = set(Utility.get_list_tuples_with_max_value(answers, model_answers, param_match_index=0, param_max_index=2))
+                
+                classified_trends = [Trend(name=model_answer[0], feature_type=focus.subfeatures[model_answer[1].upper()]) for model_answer in model_answers]
+                    
+            filtered_review.trends.clear()
+            filtered_review.trends.update(classified_trends)
+            filtered_reviews.append(filtered_review)
+                      
+        reviews.clear()
+        reviews.extend(filtered_reviews)
+            # for classfied_trend in classfied_trends:
+            #     if classfied_trend["name"] in Utility.get_list_by_column(answers, 0) and classfied_trend["score"] in Utility.get_list_by_column(answers, 2):
+            #         classfied_trends = Utility.intersect_lists_by_strings(classfied_trends, Utility.get_list_by_column(answers, 0))    
         
  # def generate_search_queries(self, query, number_of_results=1):
     #     question_llm_template = (
@@ -232,7 +322,7 @@ class LLMGaming(Agent):
 
     #     return result
     
-    # def get_trends(self, genre):
+    # def classify_trends(self, genre):
     #     result = {}
     #     question_llm_template = (
     #         "Hi! I need to figure out what gaming players are looking for in the future. "

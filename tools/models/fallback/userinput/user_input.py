@@ -6,12 +6,10 @@ from enum import Enum
 
 class UserInput(Model):
     is_multiple_answers_allowed = False
+    available_options: Enum = None
 
-    def __init__(self, model_name, topic, available_options: Enum = None, is_multiple_answers_allowed=False):
+    def __init__(self, model_name, topic, is_multiple_answers_allowed=False):
         super().__init__(None, model_name)
-        
-        available_options = list(available_options) if available_options else "Unavailable"
-        available_options_str = f"Available options: {available_options}"
             
         self.question_template = """This model is under construction and cannot be used. However, we can mock its result :)
             What would you expect the model \"{model_name}\" response to be about the {topic}?
@@ -20,13 +18,9 @@ class UserInput(Model):
         
         self.topic = topic
         self.is_multiple_answers_allowed = is_multiple_answers_allowed
-        self.available_options_str = available_options_str
         
-    def __init__(self, topic, available_options: Enum = None, is_multiple_answers_allowed=False):
+    def __init__(self, topic, is_multiple_answers_allowed=False):
         super().__init__(None, None)
-        
-        available_options = list(available_options) if available_options else "Unavailable"
-        available_options_str = f"Available options: {available_options}"
             
         self.question_template = """This model is under construction and cannot be used. However, we can mock its result :)
             What would you expect the result from the operation {topic}?
@@ -34,11 +28,12 @@ class UserInput(Model):
             q - to quit """
         self.topic = topic
         self.is_multiple_answers_allowed = is_multiple_answers_allowed
-        self.available_options_str = available_options_str
 
     def execute(self):
+        available_options = [name.lower() for name in self.available_options.__members__.keys()] if self.available_options else "Unavailable"
+        available_options_str = f"Available options: {available_options}"
         questionTemplate = self.question_template.format(
-            model_name=self.model_name, topic=self.topic, available_options_str=self.available_options_str)
+            model_name=self.model_name, topic=self.topic, available_options_str=available_options_str)
         if self.is_multiple_answers_allowed:
             questionTemplate += "\nMultiple answers are possible, as long it is splitted by a \"space\""
         else:
@@ -49,6 +44,11 @@ class UserInput(Model):
 
         if answer == 'q':
             raise QuitRequestException
+        
+        if not hasattr(self.available_options, answer.upper()):
+            print(f"Option \'{answer}\' not found! Try again...")
+            return self.execute()
+        
         if self.is_multiple_answers_allowed:
             answers = answer.split(" ")
             return answers

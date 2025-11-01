@@ -5,7 +5,7 @@ import datetime
 from innovation.FeedbackerAi.tools.sources.source import Webpage
 from innovation.FeedbackerAi.tools.local.entities.platform import PLATFORM
 from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
-from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, SUBGENRE
+from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, GENRE_TYPE
 
 # Load configuration
 # config = Utility.load_yaml()["local"]["cache"]

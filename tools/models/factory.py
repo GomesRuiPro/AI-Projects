@@ -14,7 +14,7 @@ from innovation.FeedbackerAi.tools.models.translation.facebook.multilang_nllb im
 from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.fallback.userinput.user_input import UserInput
 from innovation.FeedbackerAi.tools.models.fallback.donothing.do_nothing import DoNothing
-from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_TRANSLATION, MODEL_TEXT_CLASSIFICATION, MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VIDEO_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
+from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_TRANSLATION, MODEL_TEXT_CLASSIFICATION, MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VISUAL_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
 
 
 class Factory(ABC):
@@ -73,15 +73,15 @@ class EnvironmentFactory(VisualModelFactory):
         return None
 
 
-class VideoClassificationFactory(VisualModelFactory):
+class VisualClassificationFactory(VisualModelFactory):
     
-    MODEL_TYPE = MODEL_VIDEO_CLASSIFICATION
+    MODEL_TYPE = MODEL_VISUAL_CLASSIFICATION
 
     def __init__(self, model_config_name, config, token=None):
         super().__init__(model_config_name, config, token)
 
     def create(self, device, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Video Classification")
+        model_to_run = super().to_fallback("Visual Classification")
         if isinstance(model_to_run, Model):
             return model_to_run
 

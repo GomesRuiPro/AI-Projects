@@ -39,9 +39,9 @@ class Script:
             raise Exception(
                 f"No tool was found with the name '{self.name}'! Exiting...")
 
-        print(self.output if self.code == 0 else self.error)
+        Utility.log(self.output if self.code == 0 else self.error)
         if self.code == 2:
-            print(f"Skipping '{self.name} {inputs}:{self.error}'...")
+            Utility.log(f"Skipping '{self.name} {inputs}:{self.error}'...")
         if self.code == 1:
             print(f"Exiting '{self.name} {inputs}:{self.error}'...")
             raise Exception

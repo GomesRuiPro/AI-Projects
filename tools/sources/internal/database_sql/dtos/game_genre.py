@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import List
-from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, SUBGENRE
+from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, GENRE_TYPE
     
 @dataclass
 class GameGenre:
-    name: GENRE
-    sub_genre: List[SUBGENRE]
+    name: GENRE_TYPE
+    sub_genre: List[GENRE]

@@ -34,11 +34,11 @@ class TextModel(Model, ABC): # Used for text models
         
         if not results:
             if self.to_debug:
-                print(f"No answer found for question: {question}")
+                Utility.log(f"No answer found for question: {question}")
             return None
         
         if self.to_debug:
-            print(f"Answers found for the question asked: {results}")
+            Utility.log(f"Answers found for the question asked: {results}")
 
         return results
     
@@ -123,7 +123,7 @@ class VideoFeatureModel(VideoModel, ABC):
             
             if results is None:
                 if self.to_debug:
-                    print(f"No results founds in video_frame {index}")
+                    Utility.log(f"No results founds in video_frame {index}")
                 continue
             
         if self.to_debug:

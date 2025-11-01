@@ -6,4 +6,10 @@ class SOURCE_TYPE(Enum):
     SOCIAL_MEDIA = "social-media", True
     CRITIC = "critic", False
     USER = "user", True
-    UNKNOWN = "unknown", True
+    ALL = "all", True
+    
+    @classmethod
+    def __getitem__(cls, item):
+        # Override to make lookups case-insensitive
+        item = item.upper()
+        return super().__getitem__(item)

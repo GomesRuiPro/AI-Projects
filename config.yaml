@@ -28,11 +28,11 @@ main:
       models: ['cardiffnlp/twitter-roberta-base-sentiment-latest']
       sources: none
       player: none
-    get-keywords:
+    get-trends:
       models: ['ml6team/keyphrase-extraction-kbir-inspec']
       sources: none
       player: none
-    filter-keywords:
+    classify-trends:
       models: ['facebook/bart-large-mnli', 'microsoft/deberta-v3-base']
       sources: none
       player: none

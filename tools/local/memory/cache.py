@@ -70,7 +70,7 @@ class CacheClient(ABC):
                 return None
 
         except Exception as ex:
-            print(f"Caching was not possible: {ex} Skipping...")
+            Utility.log(f"Caching was not possible: {ex} Skipping...")
             
         return cached_data
     

@@ -34,5 +34,5 @@ class BartMnli(TextModel):
                 result: tuple = (answer["sequence"], answer["labels"][0].lower(), answer["scores"][0])
                 results.append(result)
         
-        return set(results)
+        return results
         

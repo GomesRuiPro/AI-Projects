@@ -57,10 +57,10 @@ vlm:
   # epochs: 10
   max_num_frames: 50  # the amout of frames we want to read from the video during the clip duration set (e.g. if video has 300 frames, we are only getting 16 frames)
   device_type: cuda:0 # <device hardware accelerator>:<GPU index> (nvidia)
-  device_debug: 1
+  device_debug: 1 # show device operations when running visual models, incl. changes on images/video frames
 llm:
   use_model_finetuned: False
-  device_debug: 1
+  device_debug: 1 # show device operations when running text models
 local:
   scripts:
     apis: none

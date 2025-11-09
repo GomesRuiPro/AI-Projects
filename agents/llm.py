@@ -5,7 +5,7 @@ from datetime import datetime
 from innovation.FeedbackerAi.tools.models.model import Model, TextModel
 from innovation.FeedbackerAi.tools.sources.external.browser.metacritic import MetacriticClient
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from innovation.FeedbackerAi.agents.tools_client import Operation, ToolsFactory, ExecutionMode
+from innovation.FeedbackerAi.agents.tools_client import Operation, ToolsFactory, ExecutionMode, ComponentType
 from innovation.FeedbackerAi.agents.agent import Agent
 from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
 from typing import Optional, Dict, Any, List
@@ -46,40 +46,23 @@ class LLMGaming(Agent):
         #         if with_feature == "with_source_games":
         #             self.source_clients["games"] = GamesSource.create()
     
-    def get_popular_games(self, genre: str, max_results=10):
-        self.tools_client.create(Operation.GET_GAMES)
-        sources_execution_mode = self.tools_client.sources["execution_mode"]
-        sources = self.tools_client.sources["entities"]
-
-        if not sources:
-            return None
-        
-        if sources_execution_mode == ExecutionMode.FALLBACK:
-            return sources[0].execute()
-        
+    @Agent.to_fallback(Operation.GET_GAMES, ComponentType.SOURCE)
+    def get_popular_games(self, genre: str, max_results=10):        
         current_year = datetime.now().year
     
         games = []
-        for source in sources:
+        for source in self.components:
             games.extend(source.get_games(genre, current_year, current_year, max_results))
         return games
     
+    @Agent.to_fallback(Operation.GET_REVIEWS, ComponentType.SOURCE)
     def get_reviews(self, games: List[str], max_results=10):
-        self.tools_client.create(Operation.GET_REVIEWS)
-        sources_execution_mode = self.tools_client.sources["execution_mode"]
-        sources = self.tools_client.sources["entities"]
-
-        if not sources:
-            return None
-        
-        if sources_execution_mode == ExecutionMode.FALLBACK:
-            return sources[0].execute()
            
         games_sources_reviews = {}
         for game in games:
             sources_reviews = []
             
-            for source in sources:
+            for source in self.components:
                 reviews_source = source.get_reviews(game, max_results)
                 sources_reviews.append(reviews_source)
                 
@@ -87,22 +70,27 @@ class LLMGaming(Agent):
             games_sources_reviews[game] = sources_reviews_merged
         return games_sources_reviews
     
+    # @Agent.to_fallback(Operation.GET_REVIEWS, ComponentType.SOURCE)
+    # def get_reviews(self, games: List[str], max_results=10):
+           
+    #     games_sources_reviews = {}
+    #     for game in games:
+    #         sources_reviews = []
+            
+    #         for source in self.entities:
+    #             reviews_source = source.get_reviews(game, max_results)
+    #             sources_reviews.append(reviews_source)
+                
+    #         sources_reviews_merged = Utility.merge_list_of_dicts(sources_reviews)
+    #         games_sources_reviews[game] = sources_reviews_merged
+    #     return games_sources_reviews
+    
     def translate_comments(self, comments):   
         return [ScriptManager.translate_text(comment) for comment in comments]
     
+    @Agent.to_fallback(Operation.DO_SENTIMENT_ANALYSIS, ComponentType.MODEL)
     def get_sentiment_score(self, comments: List[str]):
-        self.tools_client.create(Operation.DO_SENTIMENT_ANALYSIS)
-        models_execution_mode = self.tools_client.models["execution_mode"]
-        models = self.tools_client.models["entities"]
-
-        if not models:
-            return None
-        
-        if models_execution_mode == ExecutionMode.FALLBACK:
-            return models[0].execute()
-           
-        # REVIEW_SENTIMENT.UNKNOWN.name: text
-        
+                
         models_answers = {
             "NEGATIVE": [],
             "POSITIVE": [],
@@ -112,7 +100,7 @@ class LLMGaming(Agent):
         translated_comments = ScriptManager.translate_text(comments)
         for translated_comment in translated_comments:
             confidence_threshold_model = None
-            for model in models:
+            for model in self.components:
                 answer = model.execute(translated_comment)
                 
                 if not answer:
@@ -139,13 +127,21 @@ class LLMGaming(Agent):
     def set_sentiment_score(self, reviews: List[Review]):
         self.tools_client.create(Operation.DO_SENTIMENT_ANALYSIS)
         models_execution_mode = self.tools_client.models["execution_mode"]
-        models = self.tools_client.models["entities"]
+        models = self.tools_client.models["components"]
 
         if not models:
             return None
         
         if models_execution_mode == ExecutionMode.FALLBACK:
-            return models[0].execute()
+            user_input_model = models[0]
+            model_answer = user_input_model.execute()
+            
+            idx = 0
+            for comment in comments:
+                sentiment = REVIEW_SENTIMENT(model_answer)
+                reviews[idx].text = comment
+                reviews[idx].sentiment = sentiment
+                idx = idx+1
         
         comments = [review.text for review in reviews]
         translated_comments = ScriptManager.translate_text(comments)
@@ -178,46 +174,37 @@ class LLMGaming(Agent):
                     reviews[idx].sentiment = sentiment
             idx = idx+1
     
-    def get_trends(self, comments: List[str]):
+    # def get_trends(self, comments: List[str]):
         
-        self.tools_client.create(Operation.GET_TRENDS)
-        models_execution_mode = self.tools_client.models["execution_mode"]
-        models = self.tools_client.models["entities"]
+    #     self.tools_client.create(Operation.GET_TRENDS)
+    #     models_execution_mode = self.tools_client.models["execution_mode"]
+    #     models = self.tools_client.models["components"]
 
-        if not models:
-            return None
+    #     if not models:
+    #         return None
         
-        if models_execution_mode == ExecutionMode.FALLBACK:
-            return models[0].execute()
+    #     if models_execution_mode == ExecutionMode.FALLBACK:
+    #         return models[0].execute()
            
-        models_answers: List[Trend] = []
+    #     models_answers: List[Trend] = []
         
-        for comment in comments:
-            for model in models:
-                answers = model.execute(comment)
+    #     for comment in comments:
+    #         for model in models:
+    #             answers = model.execute(comment)
                 
-                if not answers:
-                    continue
+    #             if not answers:
+    #                 continue
                     
-                models_answers.extend([Trend(answer) for answer in answers])
+    #             models_answers.extend([Trend(answer) for answer in answers])
                 
-        return models_answers
+    #     return models_answers
     
+    @Agent.to_fallback(Operation.GET_TRENDS, ComponentType.MODEL)
     def set_trends(self, reviews: List[Review]):
-        
-        self.tools_client.create(Operation.GET_TRENDS)
-        models_execution_mode = self.tools_client.models["execution_mode"]
-        models = self.tools_client.models["entities"]
-
-        if not models:
-            return None
-        
-        if models_execution_mode == ExecutionMode.FALLBACK:
-            return models[0].execute()
         
         filtered_reviews = []   
         for review in reviews:
-            for model in models:
+            for model in self.components:
                 answers = model.execute(review.text)
                 
                 if not answers:
@@ -231,43 +218,68 @@ class LLMGaming(Agent):
         reviews.clear()
         reviews.extend(filtered_reviews)
     
-    def classify_trends(self, reviews: List[Review], focus: FEATURE = FEATURE.GENERAL):
+    # def classify_trends(self, reviews: List[Review], focus: FEATURE = FEATURE.GENERAL):
         
-        self.tools_client.create(Operation.CLASSIFY_TRENDS)
-        models_execution_mode = self.tools_client.models["execution_mode"]
-        models = self.tools_client.models["entities"]
+    #     self.tools_client.create(Operation.CLASSIFY_TRENDS)
+    #     models_execution_mode = self.tools_client.models["execution_mode"]
+    #     models = self.tools_client.models["components"]
 
-        if not models:
-            return None
+    #     if not models:
+    #         return None
         
-        if models_execution_mode == ExecutionMode.FALLBACK:
-            return models[0].execute()
+    #     if models_execution_mode == ExecutionMode.FALLBACK:
+    #         return models[0].execute()
+           
+    #     filtered_reviews: List[Review] = []
+    #     for review in reviews:
+    #         model_answers = []
+    #         classified_trends: List[Trend] = []
+    #         trends = review.trends
+    #         for model in models:
+    #             focus_subfeatures_descriptions: List[str] = focus.get_subfeatures_descriptions()
+    #             answers = model.execute(([trend.name for trend in trends], focus_subfeatures_descriptions))
+
+    #             if not answers:
+    #                 continue
+                
+    #             if not model_answers:
+    #                 model_answers.extend(answers)
+    #                 continue
+                    
+    #             model_answers = set(Utility.get_list_tuples_with_max_value(answers, model_answers, param_match_index=0, param_max_index=2))
+    #             classified_trends = set(Trend(name=model_answer[0], feature_type=focus.subfeatures[model_answer[1].upper()]) for model_answer in model_answers)
+            
+    #         if classified_trends:
+    #             filtered_review = copy.deepcopy(review)
+    #             filtered_review.trends.clear()
+    #             filtered_review.trends = classified_trends
+    #             filtered_reviews.append(filtered_review)
+                      
+    #     reviews.clear()
+    #     reviews.extend(filtered_reviews)
+        
+    @Agent.to_fallback(Operation.CLASSIFY_TRENDS, ComponentType.MODEL)
+    def classify_trends(self, reviews: List[Review], focus: FEATURE = FEATURE.GENERAL):
            
         filtered_reviews: List[Review] = []
+        focus_subfeatures_descriptions: List[str] = focus.get_subfeatures_descriptions()
         for review in reviews:
+            
             model_answers = []
             classified_trends: List[Trend] = []
             trends = review.trends
-            for model in models:
-                focus_subfeatures_descriptions: List[str] = focus.get_subfeatures_descriptions()
-                answers = model.execute(([trend.name for trend in trends], focus_subfeatures_descriptions))
 
-                if not answers:
-                    continue
-                
-                
-                if not model_answers:
-                    model_answers.extend(answers)
-                    continue
-                    
+            model_answers = super().intersect_fn(question=([trend.name for trend in trends], focus_subfeatures_descriptions), 
+                                                 param_match_index=0, param_max_index=2)
+                     
+            for model_answer in model_answers:
+                classified_trends = set(Trend(name=model_answer[0], feature_type=focus.subfeatures[model_answer[1].upper()]))
+            
+            if classified_trends:
                 filtered_review = copy.deepcopy(review)
-                model_answers = set(Utility.get_list_tuples_with_max_value(answers, model_answers, param_match_index=0, param_max_index=2))
-                
-                classified_trends = [Trend(name=model_answer[0], feature_type=focus.subfeatures[model_answer[1].upper()]) for model_answer in model_answers]
-                    
-            filtered_review.trends.clear()
-            filtered_review.trends.update(classified_trends)
-            filtered_reviews.append(filtered_review)
+                filtered_review.trends.clear()
+                filtered_review.trends = classified_trends
+                filtered_reviews.append(filtered_review)
                       
         reviews.clear()
         reviews.extend(filtered_reviews)

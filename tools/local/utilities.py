@@ -12,6 +12,8 @@ import importlib
 import inspect
 from collections import defaultdict
 from innovation.FeedbackerAi.tools.local.logger.logger import LoggerFactory
+from innovation.FeedbackerAi.tools.models.entities.video import VideoAnswer, ClassifiedLabel
+from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion
 
 
 class Utility:
@@ -40,7 +42,7 @@ class Utility:
         return content            
             
     @staticmethod
-    def show_image(video_frame, model_results=None, label_map=None):
+    def show_image(video_frame, model_results: List[ClassifiedLabel]=None, label_map=None):
        # Step 1: Convert to NumPy array
         np_image = video_frame.detach().cpu().numpy()
 
@@ -72,8 +74,8 @@ class Utility:
 
         # Show the image
         cv2.imshow('Detections', np_bgr)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        key_pressed = cv2.waitKey(1000)
+        return key_pressed
 
     @staticmethod
     def is_object_instance_of(obj, class_name, namespace):
@@ -94,21 +96,27 @@ class Utility:
     
     @staticmethod
     def get_list_tuples_with_max_value(list1, list2, param_match_index, param_max_index):
-        # Create a set of field values from list1
-        set1 = {t[param_match_index] for t in list1}
-        # Create a set of field values from list2
-        set2 = {t[param_match_index] for t in list2}
-        # Find common field values
-        common_values = set1.intersection(set2)
+        # # Create a set of field values from list1
+        # set1 = {t[param_match_index] for t in list1}
+        # # Create a set of field values from list2
+        # set2 = {t[param_match_index] for t in list2}
+        # # Find common field values
+        # common_values = set1.intersection(set2)
         
-        # Filter tuples in list1 that match the common values
-        intersected_list1 = [t for t in list1 if t[param_match_index] in common_values]
-        # Filter tuples in list2 that match the common values
-        intersected_list2 = [t for t in list2 if t[param_match_index] in common_values]
+        # # Filter tuples in list1 that match the common values
+        # intersected_list1 = [t for t in list1 if t[param_match_index] in common_values]
+        # # Filter tuples in list2 that match the common values
+        # intersected_list2 = [t for t in list2 if t[param_match_index] in common_values]
         
-        combined_list = intersected_list1 + intersected_list2
-        max_value = max(t[param_max_index] for t in combined_list)
-        return [t for t in combined_list if t[param_max_index] == max_value]
+        max_elements = {}
+        combined_list = list1 + list2
+        for item in combined_list:
+            key = item[param_match_index]
+            if key not in max_elements or item[param_max_index] > max_elements[key][param_max_index]:
+                max_elements[key] = item
+
+        # Extract the results as a list
+        return list(max_elements.values())
     
     # STRING #
     

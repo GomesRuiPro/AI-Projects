@@ -4,7 +4,7 @@ from abc import ABC
 class LoggerSingleton:
     
     logger: logging.Logger = None
-        
+    
     @classmethod
     def create(cls, name='defaultLogger', log_file='', level=logging.INFO):
             
@@ -34,4 +34,9 @@ class LoggerSingleton:
 
 class LoggerFactory(ABC):
     logger: logging.Logger = LoggerSingleton.create()
-
+        
+    @staticmethod
+    def is_debug():
+        if LoggerFactory.logger.level <= logging.DEBUG:
+            return True
+        return False

@@ -1,9 +1,7 @@
-from innovation.FeedbackerAi.tools.models.fallback.donothing.do_nothing import DoNothing as ModelDoNothing
-from innovation.FeedbackerAi.tools.models.fallback.userinput.user_input import UserInput as ModelUserInput
-from innovation.FeedbackerAi.tools.sources.fallback.donothing.do_nothing import DoNothing as SourceDoNothing
-from innovation.FeedbackerAi.tools.sources.fallback.userinput.user_input import UserInput as SourceUserInput
-from innovation.FeedbackerAi.tools.players.fallback.donothing.do_nothing import DoNothing as PlayerDoNothing
-from innovation.FeedbackerAi.tools.players.fallback.userinput.user_input import UserInput as PlayerUserInput
+from innovation.FeedbackerAi.tools.local.fallback.donothing.do_nothing import DoNothing
+from innovation.FeedbackerAi.tools.local.fallback.userinput.user_input import UserInput
+from innovation.FeedbackerAi.tools.local.entities.genre import GENRE
+from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
 from innovation.FeedbackerAi.tools.sources.source import Source
 from innovation.FeedbackerAi.tools.players.player import Player
 from innovation.FeedbackerAi.tools.models.model import Model
@@ -16,13 +14,13 @@ from enum import Enum
 from typing import Optional, Dict, Any, List
 
 # Make sure the operation order is kept
-class Operation:
-    EXTRACT_GENRE = "extract-genre"
-    GET_FEATURES = "get-features"
+class Operation(Enum):
+    EXTRACT_GENRE = "extract-genre", GENRE
+    GET_FEATURES = "get-features" 
     GET_GAMES = "get-games"
     GET_REVIEWS = "get-reviews"
     # DO_TRANSLATION = "do-translation"
-    DO_SENTIMENT_ANALYSIS = "do-sentiment-analysis"
+    DO_SENTIMENT_ANALYSIS = "do-sentiment-analysis", REVIEW_SENTIMENT
     GET_TRENDS = "get-trends"
     CLASSIFY_TRENDS = "classify-trends"
     DO_SUMMARIZATION = "do-summarization"
@@ -30,7 +28,18 @@ class Operation:
     EXTRACT_VIDEO_ENVIRONMENT_FEATURES = "extract-video-environment-features"
     EXTRACT_VIDEO_MOVEMENT_FEATURES = "extract-video-movement-features"
     
-class ExecutionMode:
+    def __init__(self, description, output_available_options: Enum = None, input: dict = None):
+        super().__init__()
+        self.description = description
+        self.input = input
+        self.output_available_options = output_available_options
+    
+class ComponentType(Enum):
+    MODEL = "model"
+    SOURCE = "source"
+    PLAYER = "player"
+    
+class ExecutionMode(Enum):
     SKIP = "skip"
     FALLBACK = "fallback"
     MULTIPLE = "multiple"
@@ -39,9 +48,9 @@ class ExecutionMode:
 class ToolsFactory(ABC):
     
     def __init__(self, workflow_config, bot_config):
-        self.models: Dict = {"entitites": List[Model], "execution_mode": ExecutionMode} 
-        self.sources: Dict = {"entitites": List[Source], "execution_mode": ExecutionMode} 
-        self.player: Dict = {"entitites": Player, "execution_mode": ExecutionMode}  
+        self.models: Dict = {"components": List[Model], "execution_mode": ExecutionMode} 
+        self.sources: Dict = {"components": List[Source], "execution_mode": ExecutionMode} 
+        self.player: Dict = {"components": Player, "execution_mode": ExecutionMode}  
         self.workflow_config: dict = workflow_config
         self.bot_config: dict = bot_config
         
@@ -213,12 +222,13 @@ class ToolsClient:
         self.workflow_config = workflow_config
         self.bot_config = bot_config
 
-    def create(self, bot_operation: str):
+    def create(self, bot_operation: Operation):
         
-        workflow_config_operation = self.workflow_config[bot_operation]
+        bot_operation_str = bot_operation.description
+        workflow_config_operation = self.workflow_config[bot_operation_str]
         
         # ADD ALL STEPS DONE BY THE BOT
-        print(f"--- {bot_operation} ---")
+        print(f"--- {bot_operation_str} ---")
         if bot_operation == Operation.EXTRACT_GENRE:
             factory = GetGenreFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.GET_GAMES:
@@ -236,29 +246,29 @@ class ToolsClient:
         elif bot_operation == Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES:
             factory = ExtractObjectFeaturesFactory(workflow_config_operation, self.bot_config)          
         else:
-            raise Exception(f"{bot_operation.name} has not been implement nor exists.")
-
+            raise Exception(f"{bot_operation_str} has not been implement nor exists.")
+        
         models, execution_mode_models = factory.createModels()
         sources, execution_mode_sources = factory.createSources()
         player, execution_mode_player = factory.createPlayer()
         
         if execution_mode_models == ExecutionMode.FALLBACK:
-            models = [ModelUserInput(bot_operation)]
+            models = [UserInput(bot_operation)]
         if execution_mode_models == ExecutionMode.SKIP:
-            models = [ModelDoNothing()]
+            models = [DoNothing()]
             
         if execution_mode_sources == ExecutionMode.FALLBACK:
-            sources = [SourceUserInput(bot_operation)]
+            sources = [UserInput(bot_operation)]
         if execution_mode_sources == ExecutionMode.SKIP:
-            sources = [SourceDoNothing()] 
+            sources = [DoNothing()] 
             
         if execution_mode_player == ExecutionMode.FALLBACK:
-            player = PlayerUserInput(bot_operation)
+            player = UserInput(bot_operation)
         if execution_mode_player == ExecutionMode.SKIP:
-            player = PlayerDoNothing()
+            player = DoNothing()
             
-        self.models = {"entities": models, "execution_mode": execution_mode_models}
-        self.sources = {"entities": sources, "execution_mode": execution_mode_sources}
-        self.player = {"entities": player, "execution_mode": execution_mode_player}
+        self.models = {"components": models, "execution_mode": execution_mode_models}
+        self.sources = {"components": sources, "execution_mode": execution_mode_sources}
+        self.player = {"components": player, "execution_mode": execution_mode_player}
         
-        return models, sources, player
+        return self.models, self.sources, self.player

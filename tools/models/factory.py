@@ -1,37 +1,23 @@
 from abc import ABC, abstractmethod
-from innovation.FeedbackerAi.tools.models.object.microsoft.glip import Glip
-from innovation.FeedbackerAi.tools.models.object.facebook.detr import Detr
 from innovation.FeedbackerAi.tools.models.object.openai.clip import Clip
-from innovation.FeedbackerAi.tools.models.question_answer.deepset.squad2 import Squad2
-from innovation.FeedbackerAi.tools.models.conversation.openai.gpt2 import Gpt2
 from innovation.FeedbackerAi.tools.models.sentiment_analysis.cardiffnlp.twitter_roberta import TwitterRoberta
-from innovation.FeedbackerAi.tools.models.summarization.google.pegasus_xsum import PegasusXsum
 from innovation.FeedbackerAi.tools.models.feature_extraction.ml6team.keyphrase_extraction_kbir_inspec import KeyphraseExtractionKbirInspec
 from innovation.FeedbackerAi.tools.models.text_classification.facebook.bart_mnli import BartMnli as FacebookMNLI
 from innovation.FeedbackerAi.tools.models.text_classification.microsoft.deberta_mnli import DebertaMnli as MicrosoftMNLI
-from innovation.FeedbackerAi.tools.models.translation.google.mt5 import Mt5
-from innovation.FeedbackerAi.tools.models.translation.facebook.multilang_nllb import Multilang_Nllb
-from innovation.FeedbackerAi.tools.models.model import Model
-from innovation.FeedbackerAi.tools.models.fallback.userinput.user_input import UserInput
-from innovation.FeedbackerAi.tools.models.fallback.donothing.do_nothing import DoNothing
 from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_TRANSLATION, MODEL_TEXT_CLASSIFICATION, MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VISUAL_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
 
 
 class Factory(ABC):
     config = None
+    model_to_run = None
 
     def __init__(self, model_config_name, config, token=None):
         self.model_config_name = model_config_name
         self.config = config
         self.token = token
-
-    def to_fallback(self, model_to_replace, topic=""):
-        if not self.config:
-            return DoNothing()
         for model_to_run in self.config:
             if model_to_run['is_enabled']:
-                return model_to_run
-        return UserInput(model_to_replace, topic)
+                self.model_to_run = model_to_run
 
 # VISUAL MODELS #
 
@@ -48,18 +34,18 @@ class ObjectFactory(VisualModelFactory):
         super().__init__(model_config_name, config, token)
 
     def create(self, device, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Object Detection")
-        if isinstance(model_to_run, Model):
-            return model_to_run
+        
+        if not self.model_to_run:
+            return None
 
         # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if ObjectFactory.MODEL_TYPE.MICROSOFT_GLIP.value in self.model_config_name:
-            return Glip(model_to_run, self.token, model_name, device, pretrained, to_debug)
-        if ObjectFactory.MODEL_TYPE.FACEBOOK_DETR.value in self.model_config_name:
-            return Detr(model_to_run, self.token, model_name, device, pretrained, to_debug)
+        model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
+        # if ObjectFactory.MODEL_TYPE.MICROSOFT_GLIP.value in self.model_config_name:
+        #     return Glip(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
+        # if ObjectFactory.MODEL_TYPE.FACEBOOK_DETR.value in self.model_config_name:
+        #     return Detr(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
         if ObjectFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
-            return Clip(model_to_run, self.token, model_name, device, pretrained, to_debug)
+            return Clip(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
 
 
 class EnvironmentFactory(VisualModelFactory):
@@ -72,7 +58,6 @@ class EnvironmentFactory(VisualModelFactory):
     def create(self, device, pretrained, to_debug=0):
         return None
 
-
 class VisualClassificationFactory(VisualModelFactory):
     
     MODEL_TYPE = MODEL_VISUAL_CLASSIFICATION
@@ -81,12 +66,8 @@ class VisualClassificationFactory(VisualModelFactory):
         super().__init__(model_config_name, config, token)
 
     def create(self, device, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Visual Classification")
-        if isinstance(model_to_run, Model):
-            return model_to_run
-
-        # do reflection here
-        return None
+        if not self.model_to_run:
+            return None
 
 
 class MovementFactory(VisualModelFactory):
@@ -114,16 +95,15 @@ class ConversationFactory(TextModelFactory, ABC):
         super().__init__(model_config_name, config, token)
 
     def create(self, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Conversation")
-        if isinstance(model_to_run, Model):
-            return model_to_run
+        if not self.model_to_run:
+            return None
 
         # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if ConversationFactory.MODEL_TYPE.OPENAI_GPT2.value in self.model_config_name:
-            return Gpt2(model_to_run, self.token, model_name, pretrained, to_debug)
-        if ConversationFactory.MODEL_TYPE.META_LLAMA_31.value in self.model_config_name:
-            pass
+        # model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
+        # if ConversationFactory.MODEL_TYPE.OPENAI_GPT2.value in self.model_config_name:
+        #     return Gpt2(self.model_to_run, self.token, model_name, pretrained, to_debug)
+        # if ConversationFactory.MODEL_TYPE.META_LLAMA_31.value in self.model_config_name:
+        #     pass
         
 class SentimentAnalysisFactory(TextModelFactory, ABC):
     
@@ -133,14 +113,13 @@ class SentimentAnalysisFactory(TextModelFactory, ABC):
         super().__init__(model_config_name, config, token)
 
     def create(self, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Sentiment Analysis")
-        if isinstance(model_to_run, Model):
-            return model_to_run
+        if not self.model_to_run:
+            return None
 
         # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
         if SentimentAnalysisFactory.MODEL_TYPE.CARDIFFNLP_TWITTER_ROBERTA.value in self.model_config_name:
-            return TwitterRoberta(model_to_run, self.token, model_name, pretrained, to_debug)
+            return TwitterRoberta(self.model_to_run, self.token, model_name, pretrained, to_debug)
 
 class TranslationFactory(TextModelFactory, ABC):
     
@@ -150,16 +129,15 @@ class TranslationFactory(TextModelFactory, ABC):
         super().__init__(model_config_name, config, token)
 
     def create(self, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Translation")
-        if isinstance(model_to_run, Model):
-            return model_to_run
+        if not self.model_to_run:
+            return None
 
         # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if TranslationFactory.MODEL_TYPE.GOOGLE_MT5.value in self.model_config_name:
-            return Mt5(model_to_run, self.token, model_name, pretrained, to_debug)
-        if TranslationFactory.MODEL_TYPE.FACEBOOK_MULTILANG_NLLB.value in self.model_config_name:
-            return Multilang_Nllb(model_to_run, self.token, model_name, pretrained, to_debug)
+        # model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
+        # if TranslationFactory.MODEL_TYPE.GOOGLE_MT5.value in self.model_config_name:
+        #     return Mt5(self.model_to_run, self.token, model_name, pretrained, to_debug)
+        # if TranslationFactory.MODEL_TYPE.FACEBOOK_MULTILANG_NLLB.value in self.model_config_name:
+        #     return Multilang_Nllb(self.model_to_run, self.token, model_name, pretrained, to_debug)
 
 class SummarizationFactory(TextModelFactory, ABC):
     
@@ -169,14 +147,13 @@ class SummarizationFactory(TextModelFactory, ABC):
         super().__init__(model_config_name, config, token)
 
     def create(self, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Summarization")
-        if isinstance(model_to_run, Model):
-            return model_to_run
+        if not self.model_to_run:
+            return None
 
         # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if SummarizationFactory.MODEL_TYPE.GOOGLE_PEGASUS_XSUM.value in self.model_config_name:
-            return PegasusXsum(model_to_run, self.token, model_name, pretrained, to_debug)
+        # model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
+        # if SummarizationFactory.MODEL_TYPE.GOOGLE_PEGASUS_XSUM.value in self.model_config_name:
+        #     return PegasusXsum(self.model_to_run, self.token, model_name, pretrained, to_debug)
         
 class FeatureExtractionFactory(TextModelFactory, ABC):
     
@@ -186,14 +163,13 @@ class FeatureExtractionFactory(TextModelFactory, ABC):
         super().__init__(model_config_name, config, token)
 
     def create(self, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Feature Extraction")
-        if isinstance(model_to_run, Model):
-            return model_to_run
-
+        if not self.model_to_run:
+            return None
+        
         # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
         if FeatureExtractionFactory.MODEL_TYPE.ML6TEAM_KEYPHRASE_EXTRACTION.value in self.model_config_name:
-            return KeyphraseExtractionKbirInspec(model_to_run, self.token, model_name, pretrained, to_debug)
+            return KeyphraseExtractionKbirInspec(self.model_to_run, self.token, model_name, pretrained, to_debug)
 
 class TextclassificationFactory(TextModelFactory, ABC):
     
@@ -203,16 +179,15 @@ class TextclassificationFactory(TextModelFactory, ABC):
         super().__init__(model_config_name, config, token)
 
     def create(self, pretrained, to_debug=0):
-        model_to_run = super().to_fallback("Text Classification")
-        if isinstance(model_to_run, Model):
-            return model_to_run
+        if not self.model_to_run:
+            return None
 
         # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
+        model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
         if TextclassificationFactory.MODEL_TYPE.FACEBOOK_BART_MNLI.value in self.model_config_name:
-            return FacebookMNLI(model_to_run, self.token, model_name, pretrained, to_debug)
+            return FacebookMNLI(self.model_to_run, self.token, model_name, pretrained, to_debug)
         if TextclassificationFactory.MODEL_TYPE.MICROSOFT_DEBERTA_MNLI.value in self.model_config_name:
-            return MicrosoftMNLI(model_to_run, self.token, model_name, pretrained, to_debug)
+            return MicrosoftMNLI(self.model_to_run, self.token, model_name, pretrained, to_debug)
     
 class QuestionAnswerFactory(TextModelFactory):
     
@@ -223,11 +198,10 @@ class QuestionAnswerFactory(TextModelFactory):
 
     def create(self, pretrained, to_debug=0):
         
-        model_to_run = super().to_fallback("Question-Answer")
-        if isinstance(model_to_run, Model):
-            return model_to_run
+        if not self.model_to_run:
+            return None
         
          # do reflection here
-        model_name = model_to_run['repository']+"/"+model_to_run['name']
-        if QuestionAnswerFactory.MODEL_TYPE.DEEPSET_SQUAD2.value in self.model_config_name:
-            return Squad2(model_to_run, self.token, model_name, pretrained, to_debug)
+        # model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
+        # if QuestionAnswerFactory.MODEL_TYPE.DEEPSET_SQUAD2.value in self.model_config_name:
+        #     return Squad2(self.model_to_run, self.token, model_name, pretrained, to_debug)

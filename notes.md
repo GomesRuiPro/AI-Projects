@@ -232,14 +232,21 @@ Feature implemented:
 - Web scrapping - DONE
 - Sources linked with LLM - DONE
 - restructure model class with fallback (factory, iterator and strategy DPs) - DONE
-- 
-
+- Figure out how to move from a composite object > dict  and send the values to the web scrapper tool (issue in Utilities) DONE
+- fix issue where openai is reading Xth frame at a time. it should read all frames but then preselected by the model after DONE
+- Connect non local LLM get Trends with VLM: get from source > extract keywords and format answer > convert answer to features  DONE
 
 
 TODO features:
-- Figure out how to move from a composite object > dict  and send the values to the web scrapper tool (issue in Utilities)
-- fix issue where openai is reading Xth frame at a time. it should read all frames but then preselected by the model after
-- Connect non local LLM get Trends with VLM: get from source > extract keywords and format answer > convert answer to features > ask VLM to look for these features > show results
+- ask VLM to look for these features > show results
+
+- REFACTORING:
+  - fix userinput problem when it should depend on input and the output expected , especially when working with reviews
+  - make each operation flexible: you should be able to use userinput
+  - make each method in each agent to NOT work with objects but string or so. Easier to implement stubs
+  - clean player and sources entities factories to avoid using is_enabled flag (shouldnt we just remove it?)
+  - make sources and player to have an execute() method instead of get_reviews and get_...
+  - implement intersect and concatenate methods from agent
 
 
 Next features:

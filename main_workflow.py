@@ -150,8 +150,8 @@ def main():
         try:
             
             # Get input
-            video_filename_path = os.path.join(TESTING_PATH, video_filename)
             focus, source = parse_user_input(question)
+            
             try: 
                 feature_type = FEATURE[focus] if focus else FEATURE.GENERAL
                 source_type = SOURCE_TYPE[source] if source else SOURCE_TYPE.ALL
@@ -159,7 +159,10 @@ def main():
                 raise RetryException
 
             # Classify genre using VLM
-            genre = vlm_gaming.extract_genre(video_filename_path)
+            video_filename_path = os.path.join(TESTING_PATH, video_filename)
+            vlm_gaming.load_video(video_filename_path)
+            
+            genre = vlm_gaming.extract_genre()
             print(f"GENRE: {genre}")
             
             # Get popular games
@@ -183,11 +186,6 @@ def main():
             reviews: List[Review] = map_from_dict(sources_reviews)
             print_reviews(reviews)
             
-            # # Translate reviews
-            # # Translations follow the structure: [comments]
-            # translated_genre_comments = llm_gaming.translate_comments(genre_comments)
-            # print(translated_genre_comments)
-            
             # Get sentiment for review
             # Sentiments follow the structure: {
                 # Sentiment: [comments]
@@ -203,15 +201,14 @@ def main():
             print_reviews(reviews, include_vars=['id', 'sentiment', 'trends'])
             
             # Classify keywords
+            llm_gaming.classify_trends(reviews, feature_type)
+            print_reviews(reviews, include_vars=['id', 'sentiment', 'text'])
             merged_trends = list(itertools.chain.from_iterable(review.trends for review in reviews))
             print(f"TOTAL TRENDS: {len(merged_trends)}")
 
-            llm_gaming.classify_trends(reviews, feature_type)
-            print_reviews(reviews, include_vars=['id', 'sentiment', 'text'])
-                        
             # Extract object features from video
-            # detected_objects = vlm_gaming.execute(video_filename_path, trends_classified)
-            # print(detected_objects)
+            detected_objects = vlm_gaming.extract_object_features(merged_trends)
+            print(detected_objects)
 
             # Ask if user wants to continue or ask something else
             question, video_filename = hello(QUESTION_TEMPLATE)

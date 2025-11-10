@@ -4,7 +4,7 @@ from innovation.FeedbackerAi.tools.sources.internal.database_sql.sql_lite import
 from innovation.FeedbackerAi.tools.sources.external.browser.metacritic import MetacriticClient
 from innovation.FeedbackerAi.tools.sources.external.browser.steamdb import SteamDbClient
 from innovation.FeedbackerAi.tools.sources.source import Source
-from innovation.FeedbackerAi.tools.local.entities.source_type import SOURCE_EXTERNAL_API, SOURCE_EXTERNAL_WEBSITE, SOURCE_INTERNAL_DATABASE
+from innovation.FeedbackerAi.tools.local.entities.source_type import SOURCE_EXTERNAL_API, SOURCE_EXTERNAL_BROWSER, SOURCE_INTERNAL_DATABASE
 from typing import Optional, Dict, Any
 
 class Factory(ABC):
@@ -50,7 +50,7 @@ class ExternalSourceFactory(Factory, ABC):
         
 class BrowserFactory(ExternalSourceFactory):
 
-    SOURCE_TYPE = SOURCE_EXTERNAL_WEBSITE
+    SOURCE_TYPE = SOURCE_EXTERNAL_BROWSER
     
     def __init__(self, config):
         super().__init__(config)

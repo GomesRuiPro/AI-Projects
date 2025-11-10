@@ -1,18 +1,21 @@
 from dataclasses import dataclass, field
+from inspect import ismethod
 from innovation.FeedbackerAi.agents.entities.answer import Answer
 from innovation.FeedbackerAi.agents.entities.question import Question
 
 @dataclass
-class Text:
+class Source:
     question: Question
     answer: Answer
     
 @dataclass
-class TextAnswer(Answer):
+class SourceAnswer:
     text: str
-    score: float
     metadata: dict = field(default_factory=dict)
+    
 @dataclass
-class TextQuestion(Question):
+class SourceQuestion:
     text: str
+    method_fn: ismethod
+    max_results: int
     metadata: dict = field(default_factory=dict)

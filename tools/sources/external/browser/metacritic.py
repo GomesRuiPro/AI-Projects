@@ -1,5 +1,7 @@
 import os
 from innovation.FeedbackerAi.tools.sources.source import Webpage
+from innovation.FeedbackerAi.tools.sources.external.browser.browser_client import BrowserClient
+from innovation.FeedbackerAi.tools.sources.entities.browser import BrowserAnswer, BrowserQuestion
 from innovation.FeedbackerAi.tools.local.entities.platform import PLATFORM
 from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
 from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, GENRE_TYPE
@@ -14,29 +16,26 @@ from typing import List
 # Load configuration
 # config = Utility.load_yaml()["local"]["cache"]
 
-class MetacriticClient():
+class MetacriticClient(BrowserClient):
       
-    DOMAIN = "metacritic.com"
-    _instance = None
-    
     available_source_types = [SOURCE_TYPE.CRITIC, SOURCE_TYPE.USER]
     available_platforms = [PLATFORM.PC, PLATFORM.PS5, PLATFORM.XBOX_X]
-    
-
-    def __new__(cls, config, to_debug):
-        if cls._instance is None:
-            cls._instance = super(MetacriticClient, cls).__new__(cls)
-        return cls._instance
 
     def __init__(self, config, to_debug):
+        super().__init__("metacritic.com", MetacriticClient.available_source_types, MetacriticClient.available_platforms)
         self.config = config
         self.to_debug = to_debug
-        self.webpage = Webpage(MetacriticClient.DOMAIN)
         
-    def extract_genres(self):
+    def extract_genres(self, browserQuestion: BrowserQuestion):
         pass
         
-    def get_games(self, genre: str, year_min: int, year_max: int, max_results: int, sort_by="userscore", number_of_attempts: int = 3):
+    def get_games(self, browserQuestion: BrowserQuestion, number_of_attempts: int = 3):
+        
+        genre = browserQuestion.text
+        max_results = browserQuestion.max_results
+        year_min = browserQuestion.metadata["year_min"]
+        year_max = browserQuestion.metadata["year_max"] if "year_max" in browserQuestion.metadata else browserQuestion.metadata["year_min"]
+        sort_by = "userscore" if "sort_by" not in browserQuestion.metadata else browserQuestion.metadata["sort_by"]        
         
         # Setting url
         release_year = ["current-year",""] if year_min == year_max else ["all_time",f"releaseYearMin={year_min}&releaseYearMax={year_max}&"]
@@ -55,8 +54,8 @@ class MetacriticClient():
             raise Exception("No games were found in Metacritic")
         if not games_hrefs:
             number_of_attempts = number_of_attempts-1
-            year_min = year_min-1
-            return self.get_games(genre, year_min, year_max, max_results, sort_by, number_of_attempts)
+            browserQuestion.metadata["year_min"] = year_min-1
+            return self.get_games(browserQuestion, number_of_attempts)
         
         games_hrefs_list = games_hrefs[0][0]['href']
         games = []
@@ -65,10 +64,13 @@ class MetacriticClient():
         return games
     
     # We need to perform a for-loop because the url is different between different platforms and source types
-    def get_reviews(self, game: str, max_results: int,
-                    source_types: List[SOURCE_TYPE]=[SOURCE_TYPE.USER], 
-                    platforms: List[PLATFORM]=[PLATFORM.PS5],
-                    sort_by="Metascore"):
+    def get_reviews(self, browserQuestion: BrowserQuestion):
+        
+        game = browserQuestion.text
+        max_results = browserQuestion.max_results
+        source_types = [SOURCE_TYPE.USER] if "source_types" in browserQuestion.metadata else browserQuestion.metadata["source_types"]
+        platforms = [PLATFORM.PS5] if "platforms" in browserQuestion.metadata else browserQuestion.metadata["platforms"]
+        sort_by = "Metascore" if "sort_by" not in browserQuestion.metadata else browserQuestion.metadata["sort_by"]        
         
         reviews = {}
         source_types = list(set(MetacriticClient.available_source_types) & set(source_types))

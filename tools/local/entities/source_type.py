@@ -45,18 +45,18 @@ class SOURCE_INTERNAL(SOURCE_TYPE):
     def parent(self) -> SOURCE_TYPE:
         return SOURCE, SOURCE.INTERNAL
     
-class SOURCE_EXTERNAL_WEBSITE(SOURCE_TYPE):
+class SOURCE_EXTERNAL_BROWSER(SOURCE_TYPE):
     METACRITIC = "metacritic"
     STEAMCHARTS = "steamcharts"
     STEAMDB = "steamdb"
     UNKNOWN = "unknown"
 
     def parent(self) -> SOURCE_TYPE:
-        return SOURCE_EXTERNAL, SOURCE_EXTERNAL.WEBSITE
+        return SOURCE_EXTERNAL, SOURCE_EXTERNAL.BROWSER
     
     def get_client(self):
-        from innovation.FeedbackerAi.tools.sources.client import Webpage
-        return Webpage
+        from innovation.FeedbackerAi.tools.sources.client import Browser
+        return Browser
     
 class SOURCE_EXTERNAL_API(SOURCE_TYPE):
     YOUTUBE = "youtube"
@@ -71,7 +71,7 @@ class SOURCE_EXTERNAL_API(SOURCE_TYPE):
         return Api
     
 class SOURCE_EXTERNAL(SOURCE_TYPE):
-    WEBSITE = "website", SOURCE_EXTERNAL_WEBSITE
+    BROWSER = "website", SOURCE_EXTERNAL_BROWSER
     API = "api", SOURCE_EXTERNAL_API
     UNKNOWN = "unknown"
     
@@ -90,7 +90,7 @@ class SOURCE(Enum):
 # available_children = all the bottom/leaf children 
 # number_of_levels = levels you want to recurse (by default - goes until the highest parent/branch)
 def recurse_bottom_to_top(bottom_name: str, 
-                          available_children: List[SOURCE_TYPE] = [SOURCE_INTERNAL_DATABASE, SOURCE_EXTERNAL_WEBSITE, SOURCE_EXTERNAL_API],
+                          available_children: List[SOURCE_TYPE] = [SOURCE_INTERNAL_DATABASE, SOURCE_EXTERNAL_BROWSER, SOURCE_EXTERNAL_API],
                           number_of_levels: int = 3) -> Enum:
     
     found_source_type: SOURCE_TYPE = None

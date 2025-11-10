@@ -3,33 +3,30 @@ from innovation.FeedbackerAi.tools.local.utilities import Utility
 from typing import Optional, Dict, Any, List, Set
 from innovation.FeedbackerAi.agents.entities.answer import Answer
 from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.tools.sources.entities.source import SourceAnswer, SourceQuestion
 
 class Source(ABC): # Used for fallback models
     
     def __init__(self):  
         pass
     
-    def execute(self, question: Question, source_execute_fn=None) -> Set[Answer]:
+    def execute(self, question: SourceQuestion, source_execute_fn=None) -> Set[Answer]:
 
         # Get predictions
         if source_execute_fn:
-            results = source_execute_fn(question)
+            sourceAnswers = source_execute_fn(question)
         
-        if not results:
-            Utility.log(f"No answer found for question: {question}")
+        if not sourceAnswers:
+            Utility.log(f"No answer found for question: {question.text}")
             return None
         
-        Utility.log(f"Answers found for the question asked: {results}")
-
-        return results
+        Utility.log(f"Answers found for the question asked: {sourceAnswers if isinstance(sourceAnswers, str) else ','.join(sourceAnswers)}")
+        return sourceAnswers
 
 class Database(Source, ABC):
 
     def __init__(self):
         super().__init__()
-    
-    def execute(self, question: Question, source_execute_fn=None) -> Set[Answer]:
-        super().execute(question, source_execute_fn)
 
 class Webpage(Source, ABC):
     
@@ -51,9 +48,6 @@ class Webpage(Source, ABC):
         
     def get_url(self):
         return f"https://{self.domain}{self.resource}{self.filter}"
-    
-    def execute(self, question: Question, source_execute_fn=None) -> Set[Answer]:
-        super().execute(question, source_execute_fn)
     
     class Component(ABC):
         

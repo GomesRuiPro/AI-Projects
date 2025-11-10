@@ -24,7 +24,7 @@ class Agent(ABC):
                     self.components = models["components"]
                 if component_type == ComponentType.SOURCE:
                     self.executionMode = sources["execution_mode"]
-                    self.components = sources["components"]
+                    self.components = sources["clients"]
                 if component_type == ComponentType.PLAYER:
                     self.executionMode = player["execution_mode"]
                     self.components = player["components"]
@@ -42,6 +42,27 @@ class Agent(ABC):
             return wrapper
         return decorator
         
+    def concatenate_fn(self, question: Question) -> Set[Answer]:
+        """
+        Concatenates answers from multiple components by executing a question on each.
+
+        Args:
+            components (list): A list of components, that can be models, sources or players
+            question: The question to be executed on each component.
+
+        Returns:
+            list: A merged list containing all answers from all components.
+        """
+        results = list()
+        for component in self.components:
+            answers: Set[Answer] = component.execute(question)
+            
+            if not answers:
+                continue
+            
+            results.extend(answers)
+        return results
+    
     def concatenate_fn(self, question: Question) -> Set[Answer]:
         """
         Concatenates answers from multiple components by executing a question on each.

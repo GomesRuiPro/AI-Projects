@@ -247,7 +247,7 @@ TODO features:
   - clean player and sources entities factories to avoid using is_enabled flag (shouldnt we just remove it?)
   - make sources and player to have an execute() method instead of get_reviews and get_...
   - implement intersect and concatenate methods from agent
-
+  - clean imports into a single file..
 
 Next features:
 

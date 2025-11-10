@@ -3,7 +3,8 @@ from innovation.FeedbackerAi.tools.local.utilities import Utility
 from abc import ABC, abstractmethod
 from datetime import datetime
 from innovation.FeedbackerAi.tools.models.model import Model, TextModel
-from innovation.FeedbackerAi.tools.sources.external.browser.metacritic import MetacriticClient
+from innovation.FeedbackerAi.tools.sources.source import Source
+from innovation.FeedbackerAi.tools.sources.client import SourceClient
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
 from innovation.FeedbackerAi.agents.tools_client import Operation, ToolsFactory, ExecutionMode, ComponentType
 from innovation.FeedbackerAi.agents.agent import Agent
@@ -14,6 +15,15 @@ from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE_TYPE
 from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
 from innovation.FeedbackerAi.tools.local.entities.review import Review, Trend
 import copy
+
+from innovation.FeedbackerAi.agents.entities.answer import Answer
+from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.tools.sources.entities.source import SourceQuestion
+from innovation.FeedbackerAi.tools.sources.entities.source import SourceAnswer
+from innovation.FeedbackerAi.tools.sources.entities.api import ApiQuestion
+from innovation.FeedbackerAi.tools.sources.entities.api import ApiAnswer
+from innovation.FeedbackerAi.tools.sources.entities.browser import BrowserQuestion
+from innovation.FeedbackerAi.tools.sources.entities.browser import BrowserAnswer
 
 LLM_CONFIG = Utility.load_yaml()["llm"]
 
@@ -50,10 +60,24 @@ class LLMGaming(Agent):
     def get_popular_games(self, genre: str, max_results=10):        
         current_year = datetime.now().year
     
-        games = []
-        for source in self.components:
-            games.extend(source.get_games(genre, current_year, current_year, max_results))
-        return games
+        metadata = {
+            "year_max": current_year,
+            "year_min": current_year
+        }
+        
+        return super().concatenate_fn(SourceQuestion(text=genre, 
+                                                     max_results=max_results, 
+                                                     metadata=metadata, 
+                                                     method_fn=SourceClient.get_games))
+
+    # @Agent.to_fallback(Operation.GET_GAMES, ComponentType.SOURCE)
+    # def get_popular_games(self, genre: str, max_results=10):        
+    #     current_year = datetime.now().year
+    
+    #     games = []
+    #     for source in self.components:
+    #         games.extend(source.get_games(genre, current_year, current_year, max_results))
+    #     return games
     
     @Agent.to_fallback(Operation.GET_REVIEWS, ComponentType.SOURCE)
     def get_reviews(self, games: List[str], max_results=10):
@@ -62,8 +86,10 @@ class LLMGaming(Agent):
         for game in games:
             sources_reviews = []
             
+            super().concatenate_fn(SourceQuestion(text=game))
+            
             for source in self.components:
-                reviews_source = source.get_reviews(game, max_results)
+                reviews_source = source.execute(game, max_results)
                 sources_reviews.append(reviews_source)
                 
             sources_reviews_merged = Utility.merge_list_of_dicts(sources_reviews)

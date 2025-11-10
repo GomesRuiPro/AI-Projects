@@ -7,6 +7,7 @@ from innovation.FeedbackerAi.tools.players.player import Player
 from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.client import ModelClient, Translation, TextClassification, ObjectDetection, Conversation, QuestionAnswer, VisualClassification, SentimentAnalysis, Summarization, FeatureExtraction
 from innovation.FeedbackerAi.tools.players.client import PlayerClient, GenericPlayer, GamingPlayer
+from innovation.FeedbackerAi.tools.sources.client import SourceClient
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 import innovation.FeedbackerAi.tools.local.entities.source_type as SOURCE_TYPE
@@ -49,7 +50,7 @@ class ToolsFactory(ABC):
     
     def __init__(self, workflow_config, bot_config):
         self.models: Dict = {"components": List[Model], "execution_mode": ExecutionMode} 
-        self.sources: Dict = {"components": List[Source], "execution_mode": ExecutionMode} 
+        self.sources: Dict = {"components": List[Source], "clients": List[SourceClient], "execution_mode": ExecutionMode} 
         self.player: Dict = {"components": Player, "execution_mode": ExecutionMode}  
         self.workflow_config: dict = workflow_config
         self.bot_config: dict = bot_config
@@ -118,9 +119,10 @@ class ToolsFactory(ABC):
             sources = []
             for source_config_name in sources_config:
                 source_enum = SOURCE_TYPE.recurse_bottom_to_top(source_config_name, number_of_levels=1)
-                client = source_enum.get_client()
-                source = client.create()
-                sources.append(source)
+                # client = source_enum.get_client()
+                sources.append(source_enum.get_client())
+                # source = client.create()
+                # sources.append(source)
             return sources, execution_mode
         return sources_config, execution_mode
     
@@ -249,7 +251,7 @@ class ToolsClient:
             raise Exception(f"{bot_operation_str} has not been implement nor exists.")
         
         models, execution_mode_models = factory.createModels()
-        sources, execution_mode_sources = factory.createSources()
+        sourcesClients, execution_mode_sources = factory.createSources()
         player, execution_mode_player = factory.createPlayer()
         
         if execution_mode_models == ExecutionMode.FALLBACK:
@@ -257,6 +259,7 @@ class ToolsClient:
         if execution_mode_models == ExecutionMode.SKIP:
             models = [DoNothing()]
             
+        sources = []
         if execution_mode_sources == ExecutionMode.FALLBACK:
             sources = [UserInput(bot_operation)]
         if execution_mode_sources == ExecutionMode.SKIP:
@@ -268,7 +271,7 @@ class ToolsClient:
             player = DoNothing()
             
         self.models = {"components": models, "execution_mode": execution_mode_models}
-        self.sources = {"components": sources, "execution_mode": execution_mode_sources}
+        self.sources = {"components": [sourceClient.create() for sourceClient in sourcesClients] if not sources else sources, "clients": sourcesClients, "execution_mode": execution_mode_sources}
         self.player = {"components": player, "execution_mode": execution_mode_player}
         
         return self.models, self.sources, self.player

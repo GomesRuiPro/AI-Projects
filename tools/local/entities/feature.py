@@ -1,6 +1,5 @@
 from enum import Enum
 from typing import List
-from innovation.FeedbackerAi.tools.local.utilities import Utility
 
 class FEATURE_TYPE(Enum):
     def __init__(self, description, subfeatures: Enum = None):

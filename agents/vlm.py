@@ -7,11 +7,14 @@ from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.agents.tools_client import ToolsClient
 from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel, VideoModel, Model
 from innovation.FeedbackerAi.agents.agent import Agent
-from innovation.FeedbackerAi.agents.tools_client import Operation, ExecutionMode, ComponentType
+from innovation.FeedbackerAi.agents.tools_client import Operation, ExecutionMode
+from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 from innovation.FeedbackerAi.tools.local.entities.genre import GENRE
 from typing import Optional, Dict, Any, List, Set
 from innovation.FeedbackerAi.tools.local.entities.review import Review, Trend
-from innovation.FeedbackerAi.tools.local.logger.logger import LoggerFactory, LoggerSingleton
+from innovation.FeedbackerAi.tools.models.entities.model import ModelAnswer, ModelQuestion
+from innovation.FeedbackerAi.tools.models.entities.text import TextQuestion, TextAnswer
+from innovation.FeedbackerAi.tools.models.client import ModelClient
 
 VLM_CONFIG = Utility.load_yaml()["vlm"]
 
@@ -121,7 +124,7 @@ class VLMGaming(Agent):
 
     @validate_video_loaded
     @Agent.to_fallback(Operation.EXTRACT_GENRE, ComponentType.MODEL)
-    def extract_genre(self):
+    def extract_genre(self) -> ModelAnswer:
         
         model = self.components[0]
         model.set_video(self.video_frames)
@@ -129,7 +132,24 @@ class VLMGaming(Agent):
     
     @validate_video_loaded
     @Agent.to_fallback(Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES, ComponentType.MODEL)
-    def extract_object_features(self, trends: Set[Trend]):
+    def get_object_features(self, questions: List[TextQuestion]) -> List[ModelAnswer]:
+               
+        reviews: Set[Review] = set()
+        
+        object_features_trends: Set[Trend] = set()
+        object_features: List[ModelAnswer] = list()
+        for question in questions:
+            
+            
+            answers = super().component_intersect_results_fn(question, ModelClient.run_model)
+
+        # TODO
+                
+        return object_features
+    
+    @validate_video_loaded
+    @Agent.to_fallback(Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES, ComponentType.MODEL)
+    def extract_object_features(self, trends: Set[Trend]) -> ModelAnswer:
 
         models_answers: List[str] = []
         for model in self.components:

@@ -9,8 +9,8 @@ from innovation.FeedbackerAi.tools.local.utilities import Utility
 
 from innovation.FeedbackerAi.tools.models.entities.video import VideoAnswer, ClassifiedLabel
 from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion
-from innovation.FeedbackerAi.agents.entities.answer import Answer
-from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.agents.entities.component import Answer
+from innovation.FeedbackerAi.agents.entities.component import Question
 
 class Clip(VideoFeatureModel):
     
@@ -84,11 +84,11 @@ class Clip(VideoFeatureModel):
                     f"Warning: Operation is not available for {self.device}. Attempting with cpu...")
                 self.model = self.model.to('cpu')
 
-    def execute(self, video_question: Question) -> Set[Answer]:
-        super().execute(video_question, self.inference)
+    def execute(self, video_question: Question, max_results) -> List[Answer]:
+        super().execute(video_question, self.inference, max_results)
     
     # Make predictions
-    def inference(self, video_frame) -> Set[Answer]:
+    def inference(self, video_frame, max_results) -> List[Answer]:
         video_frame_transformed = self.transform(video_frame)
         
         # Prepare inputs for CLIP
@@ -96,7 +96,7 @@ class Clip(VideoFeatureModel):
         # Move all input tensors to the correct device
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         
-        answers: Set[Answer] = []
+        answers: List[Answer] = []
         with torch.no_grad():
             # Get text and image embeddings
             text_features = self.model.get_text_features(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask'])

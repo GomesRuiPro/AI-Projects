@@ -7,18 +7,59 @@ import numpy as np
 import re
 import json
 import ast
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
 import importlib
 import inspect
 from collections import defaultdict
 from innovation.FeedbackerAi.tools.local.logger.logger import LoggerFactory
 from innovation.FeedbackerAi.tools.models.entities.video import VideoAnswer, ClassifiedLabel
 from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion
+from innovation.FeedbackerAi.agents.entities.component import Answer, Question
+from innovation.FeedbackerAi.tools.local.entities.platform import PLATFORM
+from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
+from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE_TYPE
+from abc import ABC
+
+
 
 
 class Utility:
     
+    # Globals
+    class GLOBALS(ABC):
+        question = None
+        video_filename = None
+        genre = None
+        focus = None
+        platforms = None
+        sources_types = None
+    
     # MISC #
+    
+    @staticmethod
+    def answer_to_review(answer: Answer, trends=set()):
+        from innovation.FeedbackerAi.tools.local.entities.review import Review
+        review = Review(
+            text=answer.text,
+            source_type=answer.metadata["source_type"] if "source_type" in answer.metadata is not None else None,
+            genre=Utility.GLOBALS.genre,
+            platform=answer.metadata["platform"] if "platform" in answer.metadata is not None else None,
+            focus=Utility.GLOBALS.focus
+        )
+        return review
+    
+    @staticmethod
+    def answer_to_trend(answer: Answer):
+        from innovation.FeedbackerAi.tools.local.entities.review import Trend
+        trend = Trend(
+            name=answer.text,
+            feature_type=FEATURE_TYPE[answer.metadata["feature_type"]] if "feature_type" in answer.metadata is not None else None
+        )
+        return trend
+    
+    @staticmethod
+    def get_globals():
+        return Utility.GLOBALS
     
     @staticmethod
     def log(message, is_debug = True):
@@ -42,7 +83,7 @@ class Utility:
         return content            
             
     @staticmethod
-    def show_image(video_frame, model_results: List[ClassifiedLabel]=None, label_map=None):
+    def show_image(video_frame, model_results: Set[ClassifiedLabel]=None, label_map=None):
        # Step 1: Convert to NumPy array
         np_image = video_frame.detach().cpu().numpy()
 
@@ -78,17 +119,17 @@ class Utility:
         return key_pressed
 
     @staticmethod
-    def is_object_instance_of(obj, class_name, namespace):
+    def is_object_instance_of(obj, class_name, namespace=None):
         # Get class object from the string
-        cls = globals().get(class_name)
+        cls = namespace.get(class_name) if namespace is not None else globals().get(class_name)
 
         if cls:
             if isinstance(obj, cls):
-                Utility.log("obj is an instance of", class_name)
+                return True
             else:
-                Utility.log("obj is NOT an instance of", class_name)
+                return False
         else:
-            Utility.log(f"Class {class_name} not found")
+            raise Exception("No class found!")
 
     @staticmethod
     def get_list_by_column(matrix, column_idx):
@@ -453,8 +494,8 @@ class Utility:
         
     @staticmethod
     def read_json_from_file(file_path):
-        file_lines = Utility.read_data_from_file(file_path)
-        return [json.loads(file_line) for file_line in file_lines]
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return json.load(file)
             
     
     @staticmethod

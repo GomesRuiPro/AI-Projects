@@ -59,6 +59,7 @@ class MODEL_TEXT_SUMMARIZATION(Enum):
     
 class MODEL_TEXT_FEATURE_EXTRACTION(Enum):
     ML6TEAM_KEYPHRASE_EXTRACTION = "keyphrase-extraction"
+    SENTENCE_TRANSFORMERS = "sentence-transformers"
     UNKNOWN = "unknown"
     
 class MODEL_TEXT_CLASSIFICATION(Enum):

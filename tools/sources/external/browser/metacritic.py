@@ -7,7 +7,7 @@ from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
 from innovation.FeedbackerAi.tools.local.entities.genre import GENRE, GENRE_TYPE
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Set, List
 import math
 from abc import ABC
 import datetime
@@ -26,16 +26,15 @@ class MetacriticClient(BrowserClient):
         self.config = config
         self.to_debug = to_debug
         
-    def extract_genres(self, browserQuestion: BrowserQuestion):
+    def extract_genres(self):
         pass
         
-    def get_games(self, browserQuestion: BrowserQuestion, number_of_attempts: int = 3):
+    def get_games(self, browserQuestion: BrowserQuestion, max_results, number_of_attempts: int = 3) -> List[BrowserAnswer]:
         
         genre = browserQuestion.text
-        max_results = browserQuestion.max_results
         year_min = browserQuestion.metadata["year_min"]
-        year_max = browserQuestion.metadata["year_max"] if "year_max" in browserQuestion.metadata else browserQuestion.metadata["year_min"]
-        sort_by = "userscore" if "sort_by" not in browserQuestion.metadata else browserQuestion.metadata["sort_by"]        
+        year_max = browserQuestion.metadata.get("year_max", year_min)
+        sort_by = browserQuestion.metadata.get("sort_by", "userscore")
         
         # Setting url
         release_year = ["current-year",""] if year_min == year_max else ["all_time",f"releaseYearMin={year_min}&releaseYearMax={year_max}&"]
@@ -55,28 +54,35 @@ class MetacriticClient(BrowserClient):
         if not games_hrefs:
             number_of_attempts = number_of_attempts-1
             browserQuestion.metadata["year_min"] = year_min-1
-            return self.get_games(browserQuestion, number_of_attempts)
+            return self.get_games(browserQuestion, max_results, number_of_attempts)
         
         games_hrefs_list = games_hrefs[0][0]['href']
-        games = []
+        
+        games: Set[str] = set()
         for game_href in games_hrefs_list:
-            games.append(game_href.split("/")[2])
-        return games
+            games.add(game_href.split("/")[2])
+            
+            if len(games) == max_results:
+                break
+            
+        return [BrowserAnswer(game) for game in games]
     
     # We need to perform a for-loop because the url is different between different platforms and source types
-    def get_reviews(self, browserQuestion: BrowserQuestion):
+    def get_reviews(self, browserQuestion: BrowserQuestion, max_results) -> List[BrowserAnswer]:
+        
+        app_globals = Utility.get_globals()
         
         game = browserQuestion.text
-        max_results = browserQuestion.max_results
-        source_types = [SOURCE_TYPE.USER] if "source_types" in browserQuestion.metadata else browserQuestion.metadata["source_types"]
-        platforms = [PLATFORM.PS5] if "platforms" in browserQuestion.metadata else browserQuestion.metadata["platforms"]
-        sort_by = "Metascore" if "sort_by" not in browserQuestion.metadata else browserQuestion.metadata["sort_by"]        
+        source_types = browserQuestion.metadata.get("source_types", [SOURCE_TYPE.USER])
+        platforms = browserQuestion.metadata.get("platforms", [PLATFORM.PS5])
+        sort_by = browserQuestion.metadata.get("sort_by", "Metascore")
+        genre = app_globals.genre
+        focus = app_globals.focus
         
-        reviews = {}
-        source_types = list(set(MetacriticClient.available_source_types) & set(source_types))
-        platforms = list(set(MetacriticClient.available_platforms) & set(platforms))
+        source_types = list(set(self.available_source_types) & set(source_types))
+        platforms = list(set(self.available_platforms) & set(platforms))
         
-        max_results_per_call = math.ceil(max_results/(len(source_types*len(platforms))))
+        # max_results_per_call = math.ceil(max_results/(len(source_types*len(platforms))))
         for platform in platforms:
             for source_type in source_types:
                 # Setting url
@@ -91,17 +97,28 @@ class MetacriticClient(BrowserClient):
                 parent_ui_component.add(Webpage.Leaf(type_to_fetch="span", _class="c-siteReview_quote g-outer-spacing-bottom-small"))
                 self.webpage.ui_component = parent_ui_component
             
-                reviews[platform.name] = {
-                    source_type.name: []
-                }
+                # reviews[platform.name] = {
+                #     source_type.name: []
+                # }
                 
-                reviews_spans = ScriptManager.scrappe_url(self.webpage, max_results_per_call)
+                reviews_spans = ScriptManager.scrappe_url(self.webpage, max_results)
                 
                 reviews_spans_list = reviews_spans[0][0]['span']
-                for review_span in reviews_spans_list:
-                    reviews[platform.name][source_type.name].append(review_span)
+                            
+                # if len(reviews_spans_list) > max_results_per_call:
+                #     reviews_spans_list = reviews_spans_list[-max_results_per_call:]
                 
-        return reviews
+                # for review_span in reviews_spans_list:
+                #     reviews.add(Review(genre=genre, focus=focus, text=review_span, source_type=source_type, platform=platform))
+                    
+                #     if len(reviews) == max_results:
+                #         break
+            
+        # [review.print() for review in reviews]
+        return [BrowserAnswer(review_span, metadata = {
+                        "platform": platform,
+                        "source_type": source_type
+                    }) for review_span in reviews_spans_list[:max_results]]
                 
                 
     

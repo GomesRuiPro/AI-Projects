@@ -1,5 +1,11 @@
 from abc import ABC, abstractmethod
+from inspect import ismethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
+from innovation.FeedbackerAi.tools.models.entities.model import ModelData, ModelQuestion
+from innovation.FeedbackerAi.agents.entities.component import Answer
+from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
+from typing import Set, List
+from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
 from innovation.FeedbackerAi.tools.models.factory import TranslationFactory, TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VisualClassificationFactory, ObjectFactory, SentimentAnalysisFactory
 
@@ -7,11 +13,20 @@ MODELS_CONFIG = Utility.load_yaml()["models"]
 
 class ModelClient(ABC):
 
-    model = None
+    component_type = ComponentType.MODEL
 
     @abstractmethod
     def create(model_config_name, use_model_finetuned, device_debug):
         pass
+    
+    # To select which method to call after intersect / concatenate ops
+    @staticmethod
+    def execute(model, question: ModelQuestion, method_fn: ismethod, max_results=None) -> List[Answer]:
+        return method_fn(model, question, max_results)
+    
+    @staticmethod
+    def run_model(model, modelQuestion: ModelQuestion, max_results=None):
+        return model.execute(modelQuestion, max_results)
 
 # TEXT MODELS #
 class Conversation(ModelClient):
@@ -21,9 +36,8 @@ class Conversation(ModelClient):
         config = MODELS_CONFIG['conversation']
         conversationFactory = ConversationFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = conversationFactory.create(
+        return conversationFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.model
 
 class QuestionAnswer(ModelClient):
 
@@ -32,9 +46,9 @@ class QuestionAnswer(ModelClient):
         config = MODELS_CONFIG['question_answer']
         questionAnswerFactory = QuestionAnswerFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = questionAnswerFactory.create(
+        return questionAnswerFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.model    
+          
 
 class Translation(ModelClient):
 
@@ -43,9 +57,9 @@ class Translation(ModelClient):
         config = MODELS_CONFIG['translation']
         translationFactory = TranslationFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = translationFactory.create(
+        return translationFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.model 
+        return ModelClient.component 
     
 class SentimentAnalysis(ModelClient):
 
@@ -54,9 +68,9 @@ class SentimentAnalysis(ModelClient):
         config = MODELS_CONFIG['sentiment_analysis']
         sentimentAnalysisFactory = SentimentAnalysisFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = sentimentAnalysisFactory.create(
+        return sentimentAnalysisFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.model    
+          
 
 class Summarization(ModelClient):
 
@@ -65,9 +79,9 @@ class Summarization(ModelClient):
         config = MODELS_CONFIG['summarization']
         summarizationFactory = SummarizationFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = summarizationFactory.create(
+        return summarizationFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.model    
+          
     
 class FeatureExtraction(ModelClient):
 
@@ -76,9 +90,9 @@ class FeatureExtraction(ModelClient):
         config = MODELS_CONFIG['feature_extraction']
         featureExtractionFactory = FeatureExtractionFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = featureExtractionFactory.create(
+        return featureExtractionFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.model    
+          
     
 class TextClassification(ModelClient):
 
@@ -87,9 +101,9 @@ class TextClassification(ModelClient):
         config = MODELS_CONFIG['text_classification']
         textclassificationFactory = TextclassificationFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = textclassificationFactory.create(
+        return textclassificationFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.model   
+         
     
 # VISUAL MODELS #
 class VisualModelClient(ModelClient, ABC):
@@ -112,9 +126,9 @@ class ObjectDetection(VisualModelClient):
         config = MODELS_CONFIG['object']
         objectFactory = ObjectFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
-        ModelClient.model = objectFactory.create(
+        return objectFactory.create(
             device_type, use_model_finetuned, device_debug)
-        return ModelClient.model
+        return ModelClient.component
 
 
 class Environment(VisualModelClient):
@@ -130,6 +144,6 @@ class VisualClassification(VisualModelClient):
     def create(model_config_name, use_model_finetuned, device_debug, device_type):
         config = MODELS_CONFIG['video_classification']
         visualClassificationFactory = VisualClassificationFactory(model_config_name, config)
-        ModelClient.model = visualClassificationFactory.create(
+        return visualClassificationFactory.create(
             device_type, use_model_finetuned, device_debug)
-        return ModelClient.model
+        return ModelClient.component

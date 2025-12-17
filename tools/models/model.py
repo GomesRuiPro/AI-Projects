@@ -3,8 +3,8 @@ from innovation.FeedbackerAi.tools.models.entities.text import TextQuestion
 from innovation.FeedbackerAi.tools.models.entities.text import TextAnswer
 from innovation.FeedbackerAi.tools.models.entities.video import VideoAnswer
 from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion
-from innovation.FeedbackerAi.agents.entities.answer import Answer
-from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.agents.entities.component import Answer
+from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from typing import Optional, Dict, Any, List, Set
 import torch
@@ -14,6 +14,7 @@ import os
 class Model(ABC):
     
     model = None
+    component_type = ComponentType.MODEL
 
     def __init__(self, config, model_name):  # Used for fallback models
         self.model_name = model_name
@@ -29,7 +30,7 @@ class TextModel(Model, ABC): # Used for text models
     def setup(self):
         pass
     
-    def execute(self, question: TextQuestion, model_execute_fn=None) -> Set[Answer]:
+    def execute(self, question: TextQuestion, model_execute_fn=None, max_results=None) -> List[Answer]:
         
          # Setup model
         if not self.model:
@@ -37,13 +38,13 @@ class TextModel(Model, ABC): # Used for text models
 
         # Get predictions
         if model_execute_fn:
-            textAnswers = model_execute_fn(question)
+            textAnswers = model_execute_fn(question, max_results)
         
         if not textAnswers:
             Utility.log(f"No answer found for question: {question.text}")
             return None
         
-        Utility.log(f"Answers found for the question asked: {textAnswers if isinstance(textAnswers, str) else ','.join(textAnswers)}")
+        Utility.log(f"Answers found for the question asked: {textAnswers}")
         return textAnswers
     
 class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to extract features
@@ -72,7 +73,7 @@ class VideoFeatureModel(VideoModel, ABC):
     def __init__(self, config, model_name, device, pretrained, to_debug):
         super().__init__(config, model_name, device, pretrained, to_debug)
 
-    def execute(self, question: VideoQuestion, model_execute_fn=None) -> Set[Answer]:
+    def execute(self, question: VideoQuestion, model_execute_fn=None, max_results=None) -> List[Answer]:
         
         video_frames = question.video_frames
         
@@ -93,7 +94,7 @@ class VideoFeatureModel(VideoModel, ABC):
 
             # Get predictions
             if model_execute_fn:
-                videoAnswers = model_execute_fn(video_frame)
+                videoAnswers = model_execute_fn(video_frame, max_results)
             
             if videoAnswers is None:
                 Utility.log(f"No results founds in video_frame {index}")

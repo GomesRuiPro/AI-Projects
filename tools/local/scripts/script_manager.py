@@ -25,7 +25,7 @@ class ScriptManager(ABC):
         return video_converted_path
     
     @staticmethod
-    def scrappe_url(webpage, max_results):
+    def scrappe_url(webpage, max_results=1):
         from innovation.FeedbackerAi.tools.sources.source import Webpage
         
         args = ["--max_results=" + str(max_results)]

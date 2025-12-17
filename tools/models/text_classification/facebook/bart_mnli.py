@@ -4,11 +4,11 @@ from torchvision import transforms
 from PIL import Image
 from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline
 from innovation.FeedbackerAi.tools.models.model import TextModel
-from typing import Optional, Dict, Any, Set
+from typing import Optional, Dict, Any, Set, List
 from innovation.FeedbackerAi.tools.models.entities.text import TextQuestion
 from innovation.FeedbackerAi.tools.models.entities.text import TextAnswer
-from innovation.FeedbackerAi.agents.entities.answer import Answer
-from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.agents.entities.component import Answer
+from innovation.FeedbackerAi.agents.entities.component import Question
 
 class BartMnli(TextModel):
 
@@ -24,20 +24,20 @@ class BartMnli(TextModel):
         else:  # calling hugging face
             self.model = pipeline("zero-shot-classification", model=self.model_name)
 
-    def execute(self, question: Question) -> Set[Answer]:
-        return super().execute(question, self.classify)
+    def execute(self, question: Question, max_results) -> List[Answer]:
+        return super().execute(question, self.classify, max_results)
     
     # Make predictions
-    def classify(self, question: TextQuestion) -> Set[Answer]:
+    def classify(self, question: TextQuestion, max_results) -> List[Answer]:
         context = question.text
         labels = question.metadata["labels"]
-        results = self.model(context, labels)
+        result = self.model(context, labels)
         
-        answers: Set[Answer] = []
-        for result in results:
-            if float(result["scores"][0]) > float(self.config["confidence_threshold"]):
-                answers.update(TextAnswer(text=result["sequence"],
-                                      score=result["scores"][0],
-                                      metadata={"labels": result["labels"][0].lower()}))
+        answers: List[Answer] = list()
+        if float(result["scores"][0]) > float(self.config["confidence_threshold"]):
+            answers.append(TextAnswer(text=result["sequence"],
+                                    score=float(result["scores"][0]),
+                                    metadata={"labels": result["labels"][0].lower()}))
         return answers
+    
         

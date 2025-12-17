@@ -1,18 +1,17 @@
 from dataclasses import dataclass, field
-from innovation.FeedbackerAi.agents.entities.answer import Answer
-from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.tools.models.entities.model import ModelData, ModelAnswer, ModelQuestion
+from typing import List
 
-@dataclass
-class Text:
-    question: Question
-    answer: Answer
     
 @dataclass
-class TextAnswer(Answer):
-    text: str
-    score: float
-    metadata: dict = field(default_factory=dict)
+class TextAnswer(ModelAnswer):
+    pass
+
 @dataclass
-class TextQuestion(Question):
-    text: str
-    metadata: dict = field(default_factory=dict)
+class TextQuestion(ModelQuestion):
+    pass
+
+@dataclass
+class TextData(ModelData):
+    answers: List[TextAnswer] = field(default_factory=list)
+    questions: List[TextQuestion] = field(default_factory=list)

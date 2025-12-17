@@ -3,21 +3,25 @@ from innovation.FeedbackerAi.tools.local.utilities import Utility
 from abc import ABC, abstractmethod
 from datetime import datetime
 from innovation.FeedbackerAi.tools.models.model import Model, TextModel
+from innovation.FeedbackerAi.tools.models.client import ModelClient
 from innovation.FeedbackerAi.tools.sources.source import Source
 from innovation.FeedbackerAi.tools.sources.client import SourceClient
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from innovation.FeedbackerAi.agents.tools_client import Operation, ToolsFactory, ExecutionMode, ComponentType
+from innovation.FeedbackerAi.agents.tools_client import Operation
+from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 from innovation.FeedbackerAi.agents.agent import Agent
 from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
 from typing import Optional, Dict, Any, List
 from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE
 from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE_TYPE
 from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
-from innovation.FeedbackerAi.tools.local.entities.review import Review, Trend
 import copy
 
-from innovation.FeedbackerAi.agents.entities.answer import Answer
-from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.tools.local.memory.db import DB
+from innovation.FeedbackerAi.agents.entities.component import Answer
+from innovation.FeedbackerAi.agents.entities.component import Question
+from innovation.FeedbackerAi.tools.models.entities.text import TextQuestion
+from innovation.FeedbackerAi.tools.models.entities.text import TextAnswer
 from innovation.FeedbackerAi.tools.sources.entities.source import SourceQuestion
 from innovation.FeedbackerAi.tools.sources.entities.source import SourceAnswer
 from innovation.FeedbackerAi.tools.sources.entities.api import ApiQuestion
@@ -32,173 +36,115 @@ class LLMGaming(Agent):
     def __init__(self, workflow_config):
         super().__init__(workflow_config, LLM_CONFIG)
     
-    # def start_model(self, *with_features):
-        # self.models = {
-        #     "conversation": None,
-        #     "question_answer": None,
-        #     "translation": None
-        # }
-        # self.source_clients = {
-        #     "games": None,
-        #     "trends": None,
-        #     "feedback": [None]
-        # }
-        
-        # for with_feature in with_features:
-        #     if "model" in with_feature:
-        #         if with_feature == "with_conversation":
-        #             self.models["conversation"] = Conversation.create()
-        #         elif with_feature == "with_question_answer":
-        #             self.models["question_answer"] = QuestionAnswer.create()
-        #         elif with_feature == "with_translation":
-        #             self.models["translation"] = None
-        #     elif "source" in with_feature:
-        #         if with_feature == "with_source_games":
-        #             self.source_clients["games"] = GamesSource.create()
-    
     @Agent.to_fallback(Operation.GET_GAMES, ComponentType.SOURCE)
-    def get_popular_games(self, genre: str, max_results=10):        
+    def get_popular_games(self, question: SourceQuestion, max_results=1) -> List[SourceAnswer]:        
         current_year = datetime.now().year
     
-        metadata = {
+        question.metadata = {
             "year_max": current_year,
             "year_min": current_year
         }
         
-        return super().concatenate_fn(SourceQuestion(text=genre, 
-                                                     max_results=max_results, 
-                                                     metadata=metadata, 
-                                                     method_fn=SourceClient.get_games))
-
-    # @Agent.to_fallback(Operation.GET_GAMES, ComponentType.SOURCE)
-    # def get_popular_games(self, genre: str, max_results=10):        
-    #     current_year = datetime.now().year
-    
-    #     games = []
-    #     for source in self.components:
-    #         games.extend(source.get_games(genre, current_year, current_year, max_results))
-    #     return games
+        games_answers = super().component_concatenate_results_fn(question, SourceClient.get_games, max_results)
+        
+        return games_answers
+        
     
     @Agent.to_fallback(Operation.GET_REVIEWS, ComponentType.SOURCE)
-    def get_reviews(self, games: List[str], max_results=10):
+    def get_reviews(self, questions: List[SourceQuestion], max_results_per_game=1) -> List[SourceAnswer]:
            
-        games_sources_reviews = {}
-        for game in games:
-            sources_reviews = []
+        games_sources_reviews = list()
+        
+        for question in questions:
+            games_sources_reviews.extend(super().component_concatenate_results_fn(question, SourceClient.get_reviews, max_results_per_game))
             
-            super().concatenate_fn(SourceQuestion(text=game))
-            
-            for source in self.components:
-                reviews_source = source.execute(game, max_results)
-                sources_reviews.append(reviews_source)
-                
-            sources_reviews_merged = Utility.merge_list_of_dicts(sources_reviews)
-            games_sources_reviews[game] = sources_reviews_merged
+        translated_texts = ScriptManager.translate_text([game_source_review.text for game_source_review in games_sources_reviews])
+        games_sources_reviews_index = 0
+        for translated_text in translated_texts: 
+            games_sources_reviews[games_sources_reviews_index].text = translated_text
+            DB.insert(Utility.answer_to_review(games_sources_reviews[games_sources_reviews_index]))
+            games_sources_reviews_index += 1
+
         return games_sources_reviews
-    
-    # @Agent.to_fallback(Operation.GET_REVIEWS, ComponentType.SOURCE)
-    # def get_reviews(self, games: List[str], max_results=10):
-           
-    #     games_sources_reviews = {}
-    #     for game in games:
-    #         sources_reviews = []
-            
-    #         for source in self.entities:
-    #             reviews_source = source.get_reviews(game, max_results)
-    #             sources_reviews.append(reviews_source)
-                
-    #         sources_reviews_merged = Utility.merge_list_of_dicts(sources_reviews)
-    #         games_sources_reviews[game] = sources_reviews_merged
-    #     return games_sources_reviews
     
     def translate_comments(self, comments):   
         return [ScriptManager.translate_text(comment) for comment in comments]
     
     @Agent.to_fallback(Operation.DO_SENTIMENT_ANALYSIS, ComponentType.MODEL)
-    def get_sentiment_score(self, comments: List[str]):
+    def get_sentiment_score(self, questions: List[TextQuestion]) -> List[TextAnswer]:
                 
-        models_answers = {
-            "NEGATIVE": [],
-            "POSITIVE": [],
-            "NEUTRAL": []
-        }
+        games_sentiments_scores = list()
+        # if max_results == 0:
+        #     max_results = len(questions)
         
-        translated_comments = ScriptManager.translate_text(comments)
+        translated_comments = ScriptManager.translate_text([question.text for question in questions])
         for translated_comment in translated_comments:
-            confidence_threshold_model = None
-            for model in self.components:
-                answer = model.execute(translated_comment)
-                
-                if not answer:
-                    continue
-                
-                answer_sentiment, answer_score = answer
-                sentiment = REVIEW_SENTIMENT.UNKNOWN
-                
-                if not confidence_threshold_model:
-                    confidence_threshold_model = float(answer_score)
-                    
-                if float(answer_score) >= confidence_threshold_model: # In case positive and negative scores from different models are very close
-                    try:
-                        sentiment = REVIEW_SENTIMENT(answer_sentiment)
-                    except Exception as ex:
-                        print("Invalid sentiment: {answer_sentiment}")
-                        sentiment = REVIEW_SENTIMENT.UNKNOWN
-                    
-                    models_answers[sentiment.name].append(translated_comment)
-                    confidence_threshold_model = float(answer_score)
-                
-        return models_answers
-    
-    def set_sentiment_score(self, reviews: List[Review]):
-        self.tools_client.create(Operation.DO_SENTIMENT_ANALYSIS)
-        models_execution_mode = self.tools_client.models["execution_mode"]
-        models = self.tools_client.models["components"]
-
-        if not models:
-            return None
-        
-        if models_execution_mode == ExecutionMode.FALLBACK:
-            user_input_model = models[0]
-            model_answer = user_input_model.execute()
             
-            idx = 0
-            for comment in comments:
-                sentiment = REVIEW_SENTIMENT(model_answer)
-                reviews[idx].text = comment
-                reviews[idx].sentiment = sentiment
-                idx = idx+1
-        
-        comments = [review.text for review in reviews]
-        translated_comments = ScriptManager.translate_text(comments)
+            answers: List[TextAnswer] = super().component_intersect_results_fn(Question(translated_comment), ModelClient.run_model)
+            
+            for answer in answers:
+                answer.metadata["comment"] = translated_comment
+                
+            games_sentiments_scores.extend(answers)
+            
+        for answer in answers:
+            review_text = answer.metadata["comment"]
+            persisted_review = DB.get_text(review_text)
+            if not persisted_review:
+                raise Exception(f"Review '{review_text}' not found in DB")
+            persisted_review.sentiment = answer.text
+                
+        return games_sentiments_scores
+    
+    # def set_sentiment_score(self, reviews: List[Review]):
+    #     self.tools_client.create(Operation.DO_SENTIMENT_ANALYSIS)
+    #     models_execution_mode = self.tools_client.models["execution_mode"]
+    #     models = self.tools_client.models["components"]
 
-        idx = 0
-        for translated_comment in translated_comments:
-            confidence_threshold_model = None
-            for model in models:
-                answer = model.execute(translated_comment)
+    #     if not models:
+    #         return None
+        
+    #     if models_execution_mode == ExecutionMode.FALLBACK:
+    #         user_input_model = models[0]
+    #         model_answer = user_input_model.execute()
+            
+    #         idx = 0
+    #         for comment in comments:
+    #             sentiment = REVIEW_SENTIMENT(model_answer)
+    #             reviews[idx].text = comment
+    #             reviews[idx].sentiment = sentiment
+    #             idx = idx+1
+        
+    #     comments = [review.text for review in reviews]
+    #     translated_comments = ScriptManager.translate_text(comments)
+
+    #     idx = 0
+    #     for translated_comment in translated_comments:
+    #         confidence_threshold_model = None
+    #         for model in models:
+    #             answer = model.execute(translated_comment)
                 
-                if not answer:
-                    continue
+    #             if not answer:
+    #                 continue
                 
-                answer_sentiment, answer_score = answer
-                sentiment = REVIEW_SENTIMENT.UNKNOWN
+    #             answer_sentiment, answer_score = answer
+    #             sentiment = REVIEW_SENTIMENT.UNKNOWN
                 
-                if not confidence_threshold_model:
-                    confidence_threshold_model = float(answer_score)
+    #             if not confidence_threshold_model:
+    #                 confidence_threshold_model = float(answer_score)
                     
-                if float(answer_score) >= confidence_threshold_model: # In case positive and negative scores from different models are very close
-                    try:
-                        sentiment = REVIEW_SENTIMENT(answer_sentiment)
-                    except Exception as ex:
-                        print("Invalid sentiment: {answer_sentiment}")
-                        sentiment = REVIEW_SENTIMENT.UNKNOWN
+    #             if float(answer_score) >= confidence_threshold_model: # In case positive and negative scores from different models are very close
+    #                 try:
+    #                     sentiment = REVIEW_SENTIMENT(answer_sentiment)
+    #                 except Exception as ex:
+    #                     print("Invalid sentiment: {answer_sentiment}")
+    #                     sentiment = REVIEW_SENTIMENT.UNKNOWN
                     
-                    # models_answers[sentiment.name].append(translated_comment)
-                    confidence_threshold_model = float(answer_score)
-                    reviews[idx].text = translated_comment
-                    reviews[idx].sentiment = sentiment
-            idx = idx+1
+    #                 # models_answers[sentiment.name].append(translated_comment)
+    #                 confidence_threshold_model = float(answer_score)
+    #                 reviews[idx].text = translated_comment
+    #                 reviews[idx].sentiment = sentiment
+    #         idx = idx+1
     
     # def get_trends(self, comments: List[str]):
         
@@ -226,23 +172,39 @@ class LLMGaming(Agent):
     #     return models_answers
     
     @Agent.to_fallback(Operation.GET_TRENDS, ComponentType.MODEL)
-    def set_trends(self, reviews: List[Review]):
+    def get_trends(self, questions: List[TextQuestion], max_results_per_review=1) -> List[TextAnswer]:
+               
+        games_trends = list()
+            
+        for question in questions:
+            
+            answers_trends = super().component_concatenate_results_fn(question, ModelClient.run_model, max_results_per_review)
+            review = DB.get_text(question.text)
+            for answer_trend in answers_trends:
+                DB.insert_trend(review.id, Utility.answer_to_trend(answer_trend))
+                
+            games_trends.extend(answers_trends) 
+            
+        return games_trends
         
-        filtered_reviews = []   
-        for review in reviews:
-            for model in self.components:
-                answers = model.execute(review.text)
+    # @Agent.to_fallback(Operation.GET_TRENDS, ComponentType.MODEL)
+    # def set_trends(self, reviews: List[Review]):
+        
+    #     filtered_reviews = []   
+    #     for review in reviews:
+    #         for model in self.components:
+    #             answers = model.execute(review.text)
                 
-                if not answers:
-                    continue
+    #             if not answers:
+    #                 continue
                 
-                filtered_review = copy.deepcopy(review)
-                trends = [Trend(answer) for answer in answers]
-                filtered_review.trends.update(trends)
-                filtered_reviews.append(filtered_review)
+    #             filtered_review = copy.deepcopy(review)
+    #             trends = [Trend(answer) for answer in answers]
+    #             filtered_review.trends.update(trends)
+    #             filtered_reviews.append(filtered_review)
                 
-        reviews.clear()
-        reviews.extend(filtered_reviews)
+    #     reviews.clear()
+    #     reviews.extend(filtered_reviews)
     
     # def classify_trends(self, reviews: List[Review], focus: FEATURE = FEATURE.GENERAL):
         
@@ -283,32 +245,51 @@ class LLMGaming(Agent):
                       
     #     reviews.clear()
     #     reviews.extend(filtered_reviews)
-        
+    
     @Agent.to_fallback(Operation.CLASSIFY_TRENDS, ComponentType.MODEL)
-    def classify_trends(self, reviews: List[Review], focus: FEATURE = FEATURE.GENERAL):
+    def get_classify_trends(self, questions: List[TextQuestion], focus: FEATURE = FEATURE.GENERAL) -> List[TextAnswer]:
            
-        filtered_reviews: List[Review] = []
+        filtered_questions_text = {question.text for question in questions}
         focus_subfeatures_descriptions: List[str] = focus.get_subfeatures_descriptions()
-        for review in reviews:
+        
+        classified_games_trends = list()
+        for filtered_question_text in filtered_questions_text:
+    
+            answers: List[TextAnswer] = super().component_intersect_results_fn(
+                Question(
+                    filtered_question_text, 
+                    metadata={"labels": focus_subfeatures_descriptions}),
+                ModelClient.run_model)
+                
+            classified_games_trends.extend(answers)
+                
+        return classified_games_trends
+        
+    # @Agent.to_fallback(Operation.CLASSIFY_TRENDS, ComponentType.MODEL)
+    # def classify_trends(self, reviews: List[Review], focus: FEATURE = FEATURE.GENERAL):
+           
+    #     filtered_reviews: List[Review] = []
+    #     focus_subfeatures_descriptions: List[str] = focus.get_subfeatures_descriptions()
+    #     for review in reviews:
             
-            model_answers = []
-            classified_trends: List[Trend] = []
-            trends = review.trends
+    #         model_answers = []
+    #         classified_trends: List[Trend] = []
+    #         trends = review.trends
 
-            model_answers = super().intersect_fn(question=([trend.name for trend in trends], focus_subfeatures_descriptions), 
-                                                 param_match_index=0, param_max_index=2)
+    #         model_answers = super().component_intersect_results_fn(question=([trend.name for trend in trends], focus_subfeatures_descriptions), 
+    #                                              param_match_index=0, param_max_index=2)
                      
-            for model_answer in model_answers:
-                classified_trends = set(Trend(name=model_answer[0], feature_type=focus.subfeatures[model_answer[1].upper()]))
+    #         for model_answer in model_answers:
+    #             classified_trends = set(Trend(name=model_answer[0], feature_type=focus.subfeatures[model_answer[1].upper()]))
             
-            if classified_trends:
-                filtered_review = copy.deepcopy(review)
-                filtered_review.trends.clear()
-                filtered_review.trends = classified_trends
-                filtered_reviews.append(filtered_review)
+    #         if classified_trends:
+    #             filtered_review = copy.deepcopy(review)
+    #             filtered_review.trends.clear()
+    #             filtered_review.trends = classified_trends
+    #             filtered_reviews.append(filtered_review)
                       
-        reviews.clear()
-        reviews.extend(filtered_reviews)
+    #     reviews.clear()
+    #     reviews.extend(filtered_reviews)
             # for classfied_trend in classfied_trends:
             #     if classfied_trend["name"] in Utility.get_list_by_column(answers, 0) and classfied_trend["score"] in Utility.get_list_by_column(answers, 2):
             #         classfied_trends = Utility.intersect_lists_by_strings(classfied_trends, Utility.get_list_by_column(answers, 0))    

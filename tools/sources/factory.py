@@ -16,6 +16,7 @@ class Factory(ABC):
         for source_to_run in self.config:
             if source_to_run['is_enabled']:
                 self.source_to_run = source_to_run
+                break
 
 # INTERNAL SOURCES #
 

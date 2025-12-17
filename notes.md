@@ -220,12 +220,21 @@ Mon Sep 22 13:40:51 2025
 |                                         |                        |                  N/A |
 +-----------------------------------------+------------------------+----------------------+
 
+Current Behavior to be aware of:
+- intersect and concatenate are the 2 options to make clients work together:
+  intersect will always choose the same answer with the highest score
+  concatenate will add all data , even if repetitive 
+- Answers and questions should allow same text, because we might need to use multiples entries to score its importance/repeatability
+- If needed to select unique texts / answers, use the intersect
+- max_results from main workflow should set the results expected per object (this can be changed later where max_results can represent the total)
+- Review and Trend objects and used for Uniqueness (sets) and after the main workflow. These classes should not be used outside of the main workflow. In the workflow we use answer and question classes for the user input.
+- The answer from each model will follow its goal: text will be considered the output expected from that model. If needed, use the metadata to add extra info, like comments
 
 
 Feature implemented:
 - set a number of different models for object detection, environment and movement. DONE
 - get genre will be stubbed for now - DONE
-- install the model coming from hugging face or - DOEN
+- install the model coming from hugging face or - DONE
 - check and filter by confidence - DONE
 - Show image with squares for object detection - DONE
 - Caching - DONE
@@ -235,10 +244,15 @@ Feature implemented:
 - Figure out how to move from a composite object > dict  and send the values to the web scrapper tool (issue in Utilities) DONE
 - fix issue where openai is reading Xth frame at a time. it should read all frames but then preselected by the model after DONE
 - Connect non local LLM get Trends with VLM: get from source > extract keywords and format answer > convert answer to features  DONE
+- Have multiple models/sources of different types running for each workflow step DONE
+- UserInput/Fallback for both questions and answers based on a json file for each workflow step DONE
+- DoNothing/Skip for each workflow step DONE
+- Intersect and Concatenate for Agent DONE
 
 
 TODO features:
-- ask VLM to look for these features > show results
+- ask VLM to look for these features > show results ( we need to find a way to check for duplicated keywords (sound, gameplay, etc..) which should influence the final score but we should only look for these once)
+- work with multiple genres
 
 - REFACTORING:
   - fix userinput problem when it should depend on input and the output expected , especially when working with reviews
@@ -248,6 +262,8 @@ TODO features:
   - make sources and player to have an execute() method instead of get_reviews and get_...
   - implement intersect and concatenate methods from agent
   - clean imports into a single file..
+  - only answers are being converted to class Answer from the json file. Should we do Questions too?
+  - Classify keywords for trends LLMs not working correctly. may need to be replaced / finetuned
 
 Next features:
 

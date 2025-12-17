@@ -1,16 +1,17 @@
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
-from typing import Optional, Dict, Any, List, Set
-from innovation.FeedbackerAi.agents.entities.answer import Answer
-from innovation.FeedbackerAi.agents.entities.question import Question
+from typing import Set, List
+from innovation.FeedbackerAi.agents.entities.component import Answer
+from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 from innovation.FeedbackerAi.tools.sources.entities.source import SourceAnswer, SourceQuestion
 
 class Source(ABC): # Used for fallback models
     
+    component_type = ComponentType.SOURCE
     def __init__(self):  
         pass
     
-    def execute(self, question: SourceQuestion, source_execute_fn=None) -> Set[Answer]:
+    def execute(self, question: SourceQuestion, source_execute_fn=None) -> List[Answer]:
 
         # Get predictions
         if source_execute_fn:

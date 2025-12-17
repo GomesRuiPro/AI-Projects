@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
+from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 
 PLAYER_CONFIG = Utility.load_yaml()["player"]
 
 # TBD = work in progress
 class PlayerClient(ABC):
     
-    player = None
+    component_type = ComponentType.PLAYER
 
     @abstractmethod
     def create():

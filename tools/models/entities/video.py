@@ -1,27 +1,23 @@
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List, Set
-from innovation.FeedbackerAi.agents.entities.answer import Answer
-from innovation.FeedbackerAi.agents.entities.question import Question
+from innovation.FeedbackerAi.tools.models.entities.model import ModelData, ModelQuestion, ModelAnswer
 
 from torch import Tensor
 
-@dataclass
-class Video:
-    question: Question
-    answer: Answer
-    
-@dataclass
+@dataclass(frozen=True)
 class ClassifiedLabel:
     label: str
-    score: float
-    debug_boxes: Tensor = None
+    debug_boxes: Tensor = field(compare=False)
     
 @dataclass
-class VideoAnswer(Answer):
-    classified_labels: List[ClassifiedLabel] = field(default_factory=list)
-    metadata: dict = field(default_factory=dict)
+class VideoAnswer(ModelAnswer):
+    classified_labels: List[ClassifiedLabel] = field(default_factory=set)
+
 @dataclass
-class VideoQuestion(Question):
+class VideoQuestion(ModelQuestion):
     video_frames: List[Tensor] = field(default_factory=list)
-    metadata: dict = field(default_factory=dict)
-    
+
+@dataclass
+class VideoData(ModelData):
+    answers: List[VideoAnswer] = field(default_factory=list)
+    questions: List[VideoQuestion] = field(default_factory=list)

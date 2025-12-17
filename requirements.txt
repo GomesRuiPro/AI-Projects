@@ -30,3 +30,5 @@ langchain-chroma
 fvcore
 pytorchvideo
 ultralytics
+tiktoken
+tokenizers

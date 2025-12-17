@@ -1,5 +1,5 @@
 main:
-  file_game: game1.mp4
+  file_game: bf6_gameplay.mp4
   # New design pattern = Abstract factory that allows to choose which models, sources and audience to use for each step.
   # To improve accuracy, you can set multiple models of the same type for the same operation
   # NOTE: [] = empty = 'none' = skips; fallback = triggers fallback; [data] = triggers each entity named data
@@ -8,32 +8,29 @@ main:
       models: fallback
       sources: none
       player: none
-    get-features:
-      models: none
-      sources: [rawg]
-      player: none
     get-games:
       models: none
+      # sources: none
       sources: ['metacritic']
       player: none
     get-reviews:
       models: none
+      # sources: none
       sources: ['metacritic']
       player: none
-    # do-translation:
-    #   models: 'facebook/nllb-200-distilled-600M'
-    #   sources: none
-    #   player: none
     do-sentiment-analysis:
+      # models: none
       models: ['cardiffnlp/twitter-roberta-base-sentiment-latest']
       sources: none
       player: none
     get-trends:
+      # models: none
       models: ['ml6team/keyphrase-extraction-kbir-inspec']
       sources: none
       player: none
     classify-trends:
-      models: ['facebook/bart-large-mnli', 'microsoft/deberta-v3-base']
+      # models: fallback
+      models: ['sentence-transformers/all-MiniLM-L6-v2']
       sources: none
       player: none
     extract-video-object-detection-features:
@@ -145,10 +142,10 @@ models:
     max_length: 512 # max number of characters/tokens for roberta models. If it is above, it truncates the text
   named_entity_recognition:
   - repository: dbmdz
-  name: test
-  is_local: False
-  is_enabled: False
-  confidence_threshold: 0.5
+    name: test
+    is_local: False
+    is_enabled: False
+    confidence_threshold: 0.5
   summarization:
   - repository: google
     name: pegasus-xsum
@@ -163,16 +160,21 @@ models:
     is_local: False
     is_enabled: True
     confidence_threshold: 0.5
+  - repository: sentence-transformers
+    name: all-MiniLM-L6-v2
+    is_local: False
+    is_enabled: True
+    confidence_threshold: 0.5
   text_classification:
   - repository: facebook
     name: bart-large-mnli
     is_local: False
-    is_enabled: True
+    is_enabled: False
     confidence_threshold: 0.5
   - repository: microsoft
     name: deberta-v3-base
     is_local: False
-    is_enabled: True
+    is_enabled: False
     confidence_threshold: 0.5
   question_answer:
   - repository: deepset

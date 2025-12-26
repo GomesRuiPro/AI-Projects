@@ -22,6 +22,8 @@ timm
 bs4
 importlib
 googletrans
+matplotlib
+reportlab
 
 langchain
 langchain-ollama

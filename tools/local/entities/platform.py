@@ -6,6 +6,7 @@ class PLATFORM(Enum):
     PS5 = "playstation-5"
     NINTENDO_SW2 = "nintendo-switch-2"
     ALL = "all"
+    UNKNOWN = "unknown"
     
     @classmethod
     def __getitem__(cls, item):

@@ -15,9 +15,6 @@ from innovation.FeedbackerAi.tools.local.logger.logger import LoggerFactory
 from innovation.FeedbackerAi.tools.models.entities.video import VideoAnswer, ClassifiedLabel
 from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion
 from innovation.FeedbackerAi.agents.entities.component import Answer, Question
-from innovation.FeedbackerAi.tools.local.entities.platform import PLATFORM
-from innovation.FeedbackerAi.tools.local.dtos.source_type import SOURCE_TYPE
-from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE_TYPE
 from abc import ABC
 
 
@@ -37,7 +34,35 @@ class Utility:
     # MISC #
     
     @staticmethod
-    def answer_to_review(answer: Answer, trends=set()):
+    def calculate_score(to_have_trends: List, not_to_have_trends: List, formula_config):
+        
+        max_score = 0
+        min_score = 0
+        score = 0
+        
+        # Add weights for positive features
+        for trend in to_have_trends:
+            weight = formula_config.get(trend.feature_type.value, 0)
+            max_score += weight
+        
+        # Subtract weights for negative features
+        for trend in not_to_have_trends:
+            weight = formula_config.get(trend.feature_type.value, 0)
+            min_score += weight
+        
+        # Handle case where max_score == min_score to avoid division by zero
+        if max_score == min_score:
+            return 0
+        
+        # Convert to percentage in range 0-100%
+        score = max_score - min_score
+        percentage = ((score - min_score) / (max_score - min_score)) * 100
+        return percentage
+            
+        
+    
+    @staticmethod
+    def answer_to_review(answer: Answer):
         from innovation.FeedbackerAi.tools.local.entities.review import Review
         review = Review(
             text=answer.text,
@@ -53,7 +78,7 @@ class Utility:
         from innovation.FeedbackerAi.tools.local.entities.review import Trend
         trend = Trend(
             name=answer.text,
-            feature_type=FEATURE_TYPE[answer.metadata["feature_type"]] if "feature_type" in answer.metadata is not None else None
+            # feature_type=FEATURE_TYPE[answer.metadata["feature_type"]] if "feature_type" in answer.metadata is not None else None
         )
         return trend
     
@@ -83,7 +108,7 @@ class Utility:
         return content            
             
     @staticmethod
-    def show_image(video_frame, model_results: Set[ClassifiedLabel]=None, label_map=None):
+    def show_image(video_frame, model_results: List[ClassifiedLabel]):
        # Step 1: Convert to NumPy array
         np_image = video_frame.detach().cpu().numpy()
 
@@ -98,24 +123,43 @@ class Utility:
         # np_image_bgr = cv2.cvtColor(np_image, cv2.COLOR_RGB2BGR)
         np_bgr = cv2.cvtColor(np_image.astype(np.uint8), cv2.COLOR_RGB2BGR)
 
-        if model_results is not None or label_map is not None:
-            
-            # Iterate over detections
-            for box, label, score in zip(model_results['boxes'], model_results['labels'], model_results['scores']):
-                # Draw bounding box
-                xmin, ymin, xmax, ymax = map(int, box)
-                label_name = label_map[label.item()]
-                confidence = score.item()
+        # Iterate over detections
+        if model_results:
+            for idx, model_result in enumerate(model_results):
+                label_name = model_result.label
+                confidence = model_result.score
+                image_text = f"{label_name}: {confidence:.2f}"
+                if model_result.debug_box:
+                    # Draw bounding box
+                    xmin, ymin, xmax, ymax = map(int, model_result.debug_box)
 
-                # Draw rectangle
-                cv2.rectangle(np_bgr, (xmin, ymin),
-                            (xmax, ymax), (0, 255, 0), 2)
-                cv2.putText(np_bgr, f"{label_name}: {confidence:.2f}", (xmin, ymin - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                    # Draw rectangle
+                    cv2.rectangle(np_bgr, (xmin, ymin),
+                                (xmax, ymax), (0, 255, 0), 2)
+                    cv2.putText(np_bgr, image_text, (xmin, ymin - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                else:
+                    # Get image dimensions
+                    height, width = np_bgr.shape[:2]
+
+                    # Calculate center position
+                    x = 10
+                    y = height - 10
+                    cv2.putText(np_bgr, image_text, (x,y-(10*idx)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    
+        else:
+            # Get image dimensions
+            height, width = np_bgr.shape[:2]
+
+            # Calculate center position
+            x = width // 2
+            y = height // 2
+            cv2.putText(np_bgr, "No detections!", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
         # Show the image
         cv2.imshow('Detections', np_bgr)
-        key_pressed = cv2.waitKey(1000)
+        key_pressed = cv2.waitKey(5000)
+
         return key_pressed
 
     @staticmethod
@@ -162,8 +206,11 @@ class Utility:
     # STRING #
     
     @staticmethod
-    def substring_from_char(s, char):
-        pos = s.find(char)
+    def substring_from_char(s, char, is_last=False):
+        if not is_last:
+            pos = s.find(char)
+        else:
+            pos = s.rfind(char)
 
         if pos != -1:
             # Get substring after the character
@@ -182,8 +229,8 @@ class Utility:
             return s
 
     @staticmethod
-    def substring_between_strings(s, before, after):
-        return Utility.substring_until_char(Utility.substring_from_char(s, before), after)
+    def substring_between_strings(s, before, after, is_last_string = False):
+        return Utility.substring_until_char(Utility.substring_from_char(s, before, is_last_string), after)
     
     @staticmethod
     def find_json_from_text(text):
@@ -234,6 +281,26 @@ class Utility:
             set: A set of strings that are present in both lists.
         """
         return set(list1) & set(list2)
+    
+    @staticmethod
+    def get_unique_answers_by_field(answers: List[Answer], field: str):
+        seen_values = set()
+        unique_objects = []
+
+        for obj in answers:
+            if field != "text":
+                value = obj.metadata[field]
+            else:
+                value = obj.text
+            if value not in seen_values:
+                seen_values.add(value)
+                obj.metadata["count"] = 1
+                unique_objects.append(obj)
+            else:
+                unique_obj = next((obj for obj in unique_objects if obj.metadata[field] == value or
+                                   obj.text == value), None)
+                unique_obj.metadata["count"] += 1
+        return unique_objects
 
     # DATE/TIME #
     
@@ -364,7 +431,15 @@ class Utility:
         return files_dict
     
     # FILE #
+    
+    @staticmethod
+    def get_filename_from_path(file_path):
+        return Utility.substring_between_strings(file_path, "/", ".", is_last_string=True)
 
+    @staticmethod
+    def get_project_directory(file_path=""):
+        return os.path.join(os.getcwd(), file_path)
+    
     @staticmethod
     def load_yaml():
         yaml_file = os.path.join(os.getcwd(), "config.yaml")
@@ -496,13 +571,24 @@ class Utility:
     def read_json_from_file(file_path):
         with open(file_path, 'r', encoding='utf-8') as file:
             return json.load(file)
-            
-    
+        
     @staticmethod
-    def does_file_exist(file_path):
+    def write_json_to_file(file_path, data):
+        with open(file_path, 'w', encoding='utf-8') as file:
+            json.dump(data, file)
+        return file_path
+            
+    @staticmethod
+    def does_file_exist(file_path, has_content=False):
         if not isinstance(file_path, str):
             raise TypeError(f"file_path '{file_path}' must be a string")
-        return os.path.exists(file_path)
+        file_exists = os.path.exists(file_path)
+        if has_content and file_exists:
+            with open(file_path, 'r') as f:
+                content = f.read()
+                if not content:
+                    return False
+        return file_exists
 
     @staticmethod
     def get_list_files(main_dir, name="", root_dir=os.getcwd(), is_dir=False):

@@ -7,6 +7,7 @@ class SOURCE_TYPE(Enum):
     CRITIC = "critic", False
     USER = "user", True
     ALL = "all", True
+    UNKNOWN = "unknown", None
     
     @classmethod
     def __getitem__(cls, item):

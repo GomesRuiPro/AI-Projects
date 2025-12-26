@@ -14,7 +14,9 @@ from typing import Optional, Dict, Any, List, Set
 from innovation.FeedbackerAi.tools.local.entities.review import Review, Trend
 from innovation.FeedbackerAi.tools.models.entities.model import ModelAnswer, ModelQuestion
 from innovation.FeedbackerAi.tools.models.entities.text import TextQuestion, TextAnswer
+from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion, VideoAnswer
 from innovation.FeedbackerAi.tools.models.client import ModelClient
+from innovation.FeedbackerAi.tools.local.memory.db import DB
 
 VLM_CONFIG = Utility.load_yaml()["vlm"]
 
@@ -131,44 +133,26 @@ class VLMGaming(Agent):
         return model.execute()
     
     @validate_video_loaded
-    @Agent.to_fallback(Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES, ComponentType.MODEL)
-    def get_object_features(self, questions: List[TextQuestion]) -> List[ModelAnswer]:
+    @Agent.to_fallback(Operation.EXTRACT_VIDEO_FEATURES, ComponentType.MODEL)
+    def get_game_features(self, questions: List[TextQuestion]) -> List[ModelAnswer]:
                
-        reviews: Set[Review] = set()
-        
-        object_features_trends: Set[Trend] = set()
-        object_features: List[ModelAnswer] = list()
-        for question in questions:
-            
-            
-            answers = super().component_intersect_results_fn(question, ModelClient.run_model)
-
-        # TODO
+        videoQuestion = VideoQuestion(video_frames=self.video_frames, text="detect")
+        videoQuestion.metadata["content"] = list((question.text, question.metadata["feature_type"]) for question in questions)
+        videoQuestion.metadata["num_frames_to_read"] = VLMGaming.num_frames_to_read
+        videoQuestion.metadata["clip_duration_seconds"] = VLMGaming.clip_duration_seconds
+        videoAnswers = super().component_intersect_results_fn(videoQuestion, ModelClient.run_model)
                 
-        return object_features
-    
-    @validate_video_loaded
-    @Agent.to_fallback(Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES, ComponentType.MODEL)
-    def extract_object_features(self, trends: Set[Trend]) -> ModelAnswer:
-
-        models_answers: List[str] = []
-        for model in self.components:
-            
-            # These have to passed after the model was created by the tools client because they are updated after reading the video
-            model.num_frames_to_read = VLMGaming.num_frames_to_read
-            model.clip_duration_seconds = VLMGaming.clip_duration_seconds
-            trends_features_types = set()
-            for trend in trends:
-                trends_features_types.add(trend.feature_type.description)
-            model.class_names = list(trends_features_types)
-            answers = model.execute(self.video_frames)
-            
-            if not answers:
-                continue
-                    
-            models_answers.extends(answers)
-                
-        return models_answers
+        answers: List[ModelAnswer] = list()
+        for videoAnswer in videoAnswers:
+            for classified_label in videoAnswer.classified_labels:
+                answer: ModelAnswer = ModelAnswer(text=classified_label.feature_type,
+                                                  score=classified_label.score,
+                                                  metadata={
+                                                    "keyword": classified_label.label,
+                                                    "video_frame": videoAnswer.text
+                                                })
+                answers.append(answer)
+        return answers
 
     # def execute(self, video_path):
     #     result = []

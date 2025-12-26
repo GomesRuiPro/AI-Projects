@@ -22,7 +22,12 @@ import itertools
 import argparse
 from innovation.FeedbackerAi.tools.local.logger.logger import LoggerFactory
 import logging
-from abc import ABC
+from innovation.FeedbackerAi.tools.local.memory.db import DB
+from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
+from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
+from innovation.FeedbackerAi.tools.local.entities.review import Review, Trend
+from datetime import date, datetime
+from collections import Counter
 
 # Init Cache
 CacheClient.init_cache()
@@ -51,6 +56,100 @@ QUESTION_TEMPLATE = (
     f"\ts=<source> - to specify which source(s) should we use to validate your game [separated by ',']: {[name.lower() for name in SOURCE_TYPE.__members__.keys()]}\n"
     "> start "
 )
+
+def create_report_data(provided_reviews, demanded_reviews):
+    # Helper function to filter reviews by sentiment
+    def filter_reviews_by_sentiment(reviews, sentiment):
+        return [review for review in reviews if review.sentiment == sentiment]
+
+    # Helper function to extract all trends from a list of reviews
+    def extract_trends(reviews):
+        trends = []
+        for review in reviews:
+            trends.extend(review.trends)
+        return trends
+    
+    # Calculate most and least features
+    def get_feature_extremes(trends: List[Trend], func) -> List:
+        results = None
+        if trends:
+            feature_values = Counter([trend.feature_type for trend in trends])
+            # Find the maximum count
+            extreme = func(feature_values.values())
+
+            # Retrieve all keys with that max count
+            results = ",".join([key.name for key, count in feature_values.items() if count == extreme])
+        
+        return results if results else FEATURE.UNKNOWN.name
+
+    # Filter reviews by sentiment
+    negative_provided = filter_reviews_by_sentiment(provided_reviews, REVIEW_SENTIMENT.NEGATIVE)
+    negative_demanded = filter_reviews_by_sentiment(demanded_reviews, REVIEW_SENTIMENT.NEGATIVE)
+    positive_provided = filter_reviews_by_sentiment(provided_reviews, REVIEW_SENTIMENT.POSITIVE)
+    positive_demanded = filter_reviews_by_sentiment(demanded_reviews, REVIEW_SENTIMENT.POSITIVE)
+
+    # Extract trends
+    negative_provided_trends: List[Trend] = extract_trends(negative_provided)
+    negative_demanded_trends: List[Trend] = extract_trends(negative_demanded)
+    positive_provided_trends: List[Trend] = extract_trends(positive_provided)
+    positive_demanded_trends: List[Trend] = extract_trends(positive_demanded)
+    all_demanded_trends: List[Trend] = extract_trends(demanded_reviews)
+    all_provided_trends: List[Trend] = extract_trends(provided_reviews)
+
+    most_demanded_feature = get_feature_extremes(all_demanded_trends, max)
+    least_demanded_feature = get_feature_extremes(all_demanded_trends, min)
+    most_provided_feature = get_feature_extremes(all_provided_trends, max)
+    least_provided_feature = get_feature_extremes(all_provided_trends, min)
+
+    most_hated_feature = FEATURE.UNKNOWN.name
+    least_hated_feature = FEATURE.UNKNOWN.name
+    if negative_demanded_trends:
+        most_hated_feature = get_feature_extremes(negative_demanded_trends, max)
+        least_hated_feature = get_feature_extremes(negative_demanded_trends, min)
+        
+    most_damaging_feature = FEATURE.UNKNOWN.name
+    least_damaging_feature = FEATURE.UNKNOWN.name
+    if negative_provided_trends:
+        most_damaging_feature = get_feature_extremes(negative_provided_trends, max)
+        least_damaging_feature = get_feature_extremes(negative_provided_trends, min)
+
+    # Find common trends
+    to_have_trends: List[Trend] = list(set(positive_demanded).intersection(set(positive_provided))) if positive_demanded else []
+    not_to_have_trends: List[Trend] = list(set(negative_provided).intersection(set(negative_demanded))) if negative_provided else []
+
+    # Calculate final score
+    final_score = None
+    if to_have_trends or not_to_have_trends:
+        final_score = Utility.calculate_score(to_have_trends, not_to_have_trends, config["report"]["formula"])
+
+    # Prepare report
+    title = f"{Utility.GLOBALS.focus.name} Report - {date.today()}"
+
+    return {
+        "title": title,
+        "data": [
+            {"table": "Demanded features", "data": [positive_demanded_trend.to_dict() for positive_demanded_trend in positive_demanded_trends]},
+            {"table": "Hated features", "data": [negative_demanded_trend.to_dict() for negative_demanded_trend in negative_demanded_trends]},
+            {"table": "Features detected in the game", "data": [all_provided_trend.to_dict() for all_provided_trend in all_provided_trends]},
+            {"table": "Lacking features in the game", "data": [to_have_trend.to_dict() for to_have_trend in to_have_trends]},
+            {"table": "Non-required features in the game", "data": [not_to_have_trend.to_dict() for not_to_have_trend in not_to_have_trends]},
+            {"graph": "Images", "data": []},
+            {"section": "Summary", "data": [
+                {"text": "Genre detected", "data": str(Utility.GLOBALS.genre).capitalize()},
+                {"text": "Final score", "data": str(final_score) if final_score else "Not defined"}]},
+            {"section": "Details", "data": [
+                {"text": "most_demanded_feature", "data": most_demanded_feature},
+                {"text": "least_demanded_feature", "data": least_demanded_feature},
+                {"text": "most_provided_feature", "data": most_provided_feature},
+                {"text": "least_provided_feature", "data": least_provided_feature},
+                {"text": "most_hated_feature", "data": most_hated_feature},
+                {"text": "least_hated_feature", "data": least_hated_feature},
+                {"text": "most_damaging_feature", "data": most_damaging_feature},
+                {"text": "least_damaging_feature", "data": least_damaging_feature}
+            ]},
+            {"section": "Footer", "data": [{"text": "", "data": "Generated by Feedbacker AI"}]}
+        ]
+    }
 
 def hello(template, to_continue=True):
     video_filename = config["main"]['file_game']
@@ -99,33 +198,6 @@ def parse_user_input(input_str):
 
     
     return focus, platforms, sources
-
-# def map_from_dict(sources_reviews: dict):
-#     global genre, feature_type, source_type
-#     reviews: List[Review] = []
-#     for review_game in sources_reviews.values():
-#         for review_game_platform_key, review_game_platform_value in review_game.items():
-#             for review_game_platform_source in review_game_platform_value:
-#                 for review_game_platform_source_comments_key, review_game_platform_source_comments_value in review_game_platform_source.items():
-#                     for review_game_platform_source_comment in review_game_platform_source_comments_value:
-#                         _source_type = SOURCE_TYPE[review_game_platform_source_comments_key]
-#                         _genre = GENRE[genre.upper()]
-#                         _platform = PLATFORM[review_game_platform_key]
-#                         _feature_type = FEATURE[feature_type.name]
-#                         review: Review = Review(review_game_platform_source_comment,
-#                                                 _source_type,
-#                                                 _genre,
-#                                                 _platform,
-#                                                 _feature_type)
-#                         reviews.append(review)
-#     return reviews
-
-# def print_reviews(reviews: List[Review], exclude_vars = [], include_vars = [], verbose = True):
-#     print(f"TOTAL REVIEWS: {len(reviews)}")
-#     [review.print(exclude_vars = exclude_vars, include_vars=include_vars) for review in reviews]
-
-# def filter_trends(keywords: List[str], feature_type: FEATURE_TYPE = FEATURE_TYPE.GENERAL):   
-#        return feature_type.filter(keywords)
 
 
 def main():   
@@ -184,9 +256,9 @@ def main():
             #     ]
             # }
             componentData.set_operation(Operation.EXTRACT_GENRE)
-            answers_genres = vlm_gaming.extract_genre()
-            app_globals.genre = answers_genres[0] # Only working for 1 genre for now and as a string
-            componentData.answers.extend(answers_genres)
+            answers = vlm_gaming.extract_genre()
+            app_globals.genre = answers[0].text # Only working for 1 genre for now and as a string
+            componentData.answers.extend(answers)
             
             print(f"GENRE: {app_globals.genre}")
             
@@ -211,12 +283,13 @@ def main():
             #     ]
             # }
             componentData.set_operation(Operation.GET_GAMES)
-            componentData.questions.extend([SourceQuestion(answer_genre.text) for answer_genre in answers_genres]) 
-            answers_popular_games = llm_gaming.get_popular_games(componentData.get_last_question(), max_results=10)
-            componentData.answers.extend(answers_popular_games)
+            questions = [SourceQuestion(answer_genre.text) for answer_genre in answers]
+            componentData.questions.extend(questions) 
+            answers = llm_gaming.get_popular_games(componentData.get_last_question(), max_results=10)
+            componentData.answers.extend(answers)
             
-            print(f"TOTAL GAMES: {len(answers_popular_games)}")
-            Utility.log(answers_popular_games)
+            print(f"TOTAL GAMES: {len(answers)}")
+            Utility.log(answers)
 
             # Get Reviews
             # Questions follow the structure:
@@ -245,12 +318,22 @@ def main():
             #     ]
             # }
             componentData.set_operation(Operation.GET_REVIEWS)
-            componentData.questions.extend([SourceQuestion(answer_popular_game.text) for answer_popular_game in answers_popular_games])    
-            answers_sources_reviews = llm_gaming.get_reviews(componentData.questions, max_results_per_game=10)       
-            componentData.answers.extend(answers_sources_reviews)
+            questions = [SourceQuestion(answer_popular_game.text) for answer_popular_game in answers]
+            componentData.questions.extend(questions)    
+            answers = llm_gaming.get_reviews(componentData.questions, max_results_per_game=10)       
+            componentData.answers.extend(answers)
+                
+            # Note: we need to perform a list of strings due to performance of the script
+            if answers:
+                translated_texts = ScriptManager.translate_text([game_source_review.text for game_source_review in answers])
+                games_sources_reviews_index = 0
+                for translated_text in translated_texts: 
+                    answers[games_sources_reviews_index].text = translated_text
+                    DB.insert(Utility.answer_to_review(answers[games_sources_reviews_index]))
+                    games_sources_reviews_index += 1
             
-            print(f"TOTAL REVIEWS: {len(answers_sources_reviews)}")
-            Utility.log(answers_sources_reviews)
+            print(f"TOTAL REVIEWS: {len(answers)}")
+            Utility.log(answers)
             
             # Get Sentiment per Review
             # Questions follow the structure:
@@ -275,12 +358,20 @@ def main():
             #     ]
             # }
             componentData.set_operation(Operation.DO_SENTIMENT_ANALYSIS)
-            componentData.questions.extend([TextQuestion(answers_source_review.text) for answers_source_review in answers_sources_reviews])   
-            answers_sources_sentimented_reviews = llm_gaming.get_sentiment_score(componentData.questions)
-            componentData.answers.extend(answers_sources_sentimented_reviews)
+            questions = [TextQuestion(answers_source_review.text) for answers_source_review in answers]
+            componentData.questions.extend(questions)   
+            answers = llm_gaming.get_sentiment_score(componentData.questions)
+            componentData.answers.extend(answers)
+        
+            for answer in answers:
+                review_text = answer.metadata["comment"]
+                persisted_review = DB.get_review_by_text(review_text)
+                if not persisted_review:
+                    DB.insert(Utility.answer_to_review(answer))
+                persisted_review.sentiment = REVIEW_SENTIMENT[answer.text.upper()]
             
-            print(f"TOTAL SENTIMENTED REVIEWS: {len(answers_sources_sentimented_reviews)}")
-            Utility.log(answers_sources_sentimented_reviews)
+            print(f"TOTAL SENTIMENTED REVIEWS: {len(answers)}")
+            Utility.log(answers)
             
             # Get Trends per Review
             # Questions follow the structure:
@@ -296,19 +387,26 @@ def main():
             # {
             #     [
             #         {
-            #             text: str(keywords),
-            #             metadata: {}
+            #             text: str(keyword),
+            #             metadata: {
+            #               comment: str
+            #             }
             #             score: float
             #         } 
             #     ]
             # }
             componentData.set_operation(Operation.GET_TRENDS)
-            componentData.questions.extend([TextQuestion(answers_source_sentimented_review.metadata["comment"]) for answers_source_sentimented_review in answers_sources_sentimented_reviews])   
-            answers_trends = llm_gaming.get_trends(componentData.questions, max_results_per_review=10)
-            componentData.answers.extend(answers_trends)
+            questions = [TextQuestion(answers_source_sentimented_review.metadata["comment"]) for answers_source_sentimented_review in answers]
+            componentData.questions.extend(questions)   
+            answers = llm_gaming.get_trends(componentData.questions, max_results_per_review=10)
+            componentData.answers.extend(answers)
             
-            print(f"TOTAL TRENDS: {len(answers_trends)}")
-            Utility.log(answers_trends)
+            for answer in answers:
+                review = DB.get_review_by_text(answer.metadata["comment"])
+                DB.insert_trend(review.id, Utility.answer_to_trend(answer))
+            
+            print(f"TOTAL TRENDS: {len(answers)}")
+            Utility.log(answers)
             
             # Classify keywords
             # Questions follow the structure:
@@ -333,20 +431,34 @@ def main():
             #     ]
             # }
             componentData.set_operation(Operation.CLASSIFY_TRENDS)
-            componentData.questions.extend([TextQuestion(answer_trend.text) for answer_trend in answers_trends])   
-            answers_classified_trends = llm_gaming.get_classify_trends(componentData.questions, app_globals.focus)
-            componentData.answers.extend(answers_classified_trends)
+            questions = [TextQuestion(answer_trend.text) for answer_trend in answers]
+            componentData.questions.extend(questions)   
+            answers = llm_gaming.get_classify_trends(componentData.questions, app_globals.focus)
+            componentData.answers.extend(answers)
             
-            print(f"TOTAL CLASSIFIED TRENDS: {len(answers_classified_trends)}")
-            Utility.log(answers_classified_trends)        
+            for answer in answers:
+                trend_name = answer.metadata["keyword"]
+                persisted_trend = DB.get_trend_by_name(trend_name)
+                if not persisted_trend:
+                    review = DB.get_review_by_trend_name(trend_name)
+                    if not review:
+                        review = DB.insert(Review("unknown", Utility.GLOBALS.genre, PLATFORM.UNKNOWN, SOURCE_TYPE.UNKNOWN, Utility.GLOBALS.focus))
+                        review.sentiment = REVIEW_SENTIMENT.NEUTRAL
+                    persisted_trend = DB.insert_trend(review.id, Trend(trend_name))
+                persisted_trend.feature_type = FEATURE[answer.text.upper()]
+            
+            print(f"TOTAL CLASSIFIED TRENDS: {len(answers)}")
+            Utility.log(answers)        
 
-            # Extract object features from video
+            # Extract game features from video
             # Questions follow the structure:
             # {
             #     [
             #         {
             #             text: str(keywords),
-            #             metadata: {}
+            #             metadata: {
+            #               feature_type: str(feature_type)
+            #             }
             #         }
             #     ]
             # }
@@ -356,22 +468,86 @@ def main():
             #         {
             #             text: str(feature_type),
             #             metadata: {
-            #                 keyword: str(keywords)
+            #                 keyword: str(keywords),
+            #                 video_frame: int
             #             }
             #             score: float
             #         } 
             #     ]
             # }
-            componentData.set_operation(Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES)
-            componentData.questions.extend([TextQuestion(answer_classified_trend.text) for answer_classified_trend in answers_classified_trends])   
-            answers_detected_objects = vlm_gaming.get_object_features(componentData.questions, app_globals.focus)
-            componentData.answers.extend(answers_detected_objects)
-
-            print(f"TOTAL DETECTED OBJECTS: {len(answers_detected_objects)}")
-            Utility.log(answers_detected_objects)
+            componentData.set_operation(Operation.EXTRACT_VIDEO_FEATURES)
             
-            # detected_objects = vlm_gaming.extract_object_features(merged_trends)
-            # print(detected_objects)
+            unique_trends = Utility.get_unique_answers_by_field(answers, "keyword")
+            questions = [TextQuestion(text=unique_trend.metadata["keyword"], metadata={
+                "feature_type": unique_trend.text}) for unique_trend in unique_trends]
+            componentData.questions.extend(questions) 
+            answers_detected_game_features = vlm_gaming.get_game_features(componentData.questions)
+            componentData.answers.extend(answers_detected_game_features)
+
+            print(f"TOTAL DETECTED OBJECTS: {len(answers_detected_game_features)}")
+            Utility.log(answers_detected_game_features)
+            
+            # Generate feedback report
+            # Questions follow the structure:
+            # {
+            #     [
+            #         {
+            #             text: str(keywords),
+            #             metadata: {
+            #               sentiment: str(sentiment),
+            #               feature_type: str(feature_type)
+            #               is_demanded: boolean
+            #             }
+            #         }
+            #     ]
+            # }
+            # Answers follow the structure: 
+            # {
+            #     [
+            #         {
+            #             text: str(),
+            #             metadata: {}
+            #             score: float
+            #         } 
+            #     ]
+            # }
+            componentData.set_operation(Operation.CREATE_FEEDBACK_REPORT)
+            
+            if not DB.trends or not answers_detected_game_features:
+                raise Exception("Report generation cannot be completed without any trends to be compared against to.")
+            
+            provided_reviews: List[Review] = list()
+            for answer_detected_game_feature in answers_detected_game_features:
+                review_text = answer_detected_game_feature.metadata["video_frame"]
+                persisted_review = next((provided_review for provided_review in provided_reviews if provided_review.text == review_text), None)
+                
+                trend_name = answer_detected_game_feature.metadata["keyword"]
+                trend = Trend(trend_name)
+                trend.feature_type = FEATURE[answer_detected_game_feature.text.upper()]
+                
+                if not persisted_review:
+                    persisted_review = Review(review_text,
+                                Utility.GLOBALS.genre,
+                                PLATFORM.UNKNOWN,
+                                SOURCE_TYPE.UNKNOWN,
+                                Utility.GLOBALS.focus)
+                    db_review = DB.get_review_by_trend_name(trend_name)
+                    persisted_review.sentiment = db_review.sentiment if db_review else REVIEW_SENTIMENT.NEUTRAL
+                
+                trend.review = persisted_review
+                persisted_review.trends.append(trend)
+                provided_reviews.append(persisted_review)
+                
+            demanded_reviews: List[Review] = [db_review for db_review in DB.reviews if db_review.trends and 
+                                              db_review.sentiment != REVIEW_SENTIMENT.UNKNOWN]
+            
+            reportdata = create_report_data(provided_reviews, demanded_reviews)
+            folder_path = config["report"]["path"]
+            output_filepath = f"{folder_path}/{Utility.GLOBALS.focus.value[0]}_report_{int(datetime.now().timestamp())}.pdf"
+            ScriptManager.generate_pdf(output_filepath, reportdata)
+
+            print(f"REPORT GENERATED IN: {output_filepath}")
+            Utility.log(reportdata)
 
             # Ask if user wants to continue or ask something else
             app_globals.question, app_globals.video_filename = hello(QUESTION_TEMPLATE)
@@ -392,3 +568,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+            
+            

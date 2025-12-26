@@ -92,3 +92,4 @@ class GENRE(GENRE_TYPE):
     CASINO = "casino"
     EDUCATIONAL = "educational"
     INDIE = "indie"
+    UNKNOWN = "unknown"

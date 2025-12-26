@@ -10,27 +10,30 @@ from typing_extensions import List, Set, Optional
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 from enum import Enum   
 import uuid     
+import json
+from dataclasses import asdict, is_dataclass
 
 @dataclass(eq=True)
 class Trend:
-    id: uuid
+    id: uuid = field(init=False)
     name: str
-    feature_type: FEATURE_TYPE
-    amount: int = field(init=False)
-    review: Optional['Review']
+    feature_type: FEATURE_TYPE = field(init=False, default=FEATURE.UNKNOWN)
+    amount: int = field(init=False, default=1)
+    review: object = field(init=False, default=None)
     
-    def __init__(self, name: str, feature_type: FEATURE_TYPE = None, review=None):
+    def __init__(self, name: str):
         self.name = name
-        self.feature_type: FEATURE_TYPE = feature_type if feature_type else FEATURE_UNKNOWN
-        self.amount = 1
-        self.review = review
         self.id = uuid.uuid4()
+        self.amount = 1
+        self.feature_type = FEATURE.UNKNOWN
+        self.review = None
         
     def toString(self):
         return [f"{name} = {value}" for name, value in vars(self).items()]
     
     def increment_amount(self):
         self.amount += 1
+        return self.amount
         
     def __hash__(self):
         return hash(self.name)
@@ -40,20 +43,29 @@ class Trend:
             return None
         return self.name == other.name
     
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "feature_type": self.feature_type.name,
+            "amount": self.amount,
+            "review_id": str(self.review.id)
+        }
+    
 @dataclass(eq=True)
 class Review:
     
-    id: uuid
+    id: uuid = field(init=False)
     text: str
-    source_type: SOURCE_TYPE
-    player_type: PLAYER_TYPE = field(init=False)
-    genre: GENRE
-    platform: PLATFORM
-    focus: FEATURE_TYPE
-    sentiment: REVIEW_SENTIMENT = field(init=False)
-    trends: List[Trend] = field(init=False)
+    source_type: SOURCE_TYPE = field(default=SOURCE_TYPE.UNKNOWN)
+    player_type: PLAYER_TYPE = field(init=False, default=PLAYER_TYPE.UNKNOWN)
+    genre: GENRE = field(default=GENRE.UNKNOWN)
+    platform: PLATFORM = field(default=PLATFORM.UNKNOWN)
+    focus: FEATURE_TYPE = field(default=FEATURE.UNKNOWN)
+    sentiment: REVIEW_SENTIMENT = field(init=False, default=REVIEW_SENTIMENT.UNKNOWN)
+    trends: List[Trend] = field(init=False, default_factory=list)
     
-    def __init__(self, text: str, genre: GENRE = None, platform: PLATFORM = None, source_type: SOURCE_TYPE = None, focus: FEATURE_TYPE = None):
+    def __init__(self, text: str, genre, platform, source_type, focus):
         self.text = text
         self.genre = genre
         self.focus = focus
@@ -80,4 +92,15 @@ class Review:
             return None
         return self.text == other.text
     
-        
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "text": self.text,
+            "genre": self.genre,
+            "source_type": self.source_type.name,
+            "player_type": self.player_type.name,
+            "platform": self.platform.name,
+            "focus": self.focus.name,
+            "sentiment": self.sentiment.name,
+            "trends": ",".join([trend.name for trend in self.trends]),
+        }

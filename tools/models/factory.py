@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from innovation.FeedbackerAi.tools.models.object.openai.clip import Clip
+from innovation.FeedbackerAi.tools.models.video_classification.openai.clip import Clip
 from innovation.FeedbackerAi.tools.models.sentiment_analysis.cardiffnlp.twitter_roberta import TwitterRoberta
 from innovation.FeedbackerAi.tools.models.feature_extraction.ml6team.keyphrase_extraction_kbir_inspec import KeyphraseExtractionKbirInspec
 from innovation.FeedbackerAi.tools.models.text_classification.facebook.bart_mnli import BartMnli as FacebookMNLI
@@ -46,8 +46,8 @@ class ObjectFactory(VisualModelFactory):
         #     return Glip(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
         # if ObjectFactory.MODEL_TYPE.FACEBOOK_DETR.value in self.model_config_name:
         #     return Detr(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
-        if ObjectFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
-            return Clip(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
+        # if ObjectFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
+        #     return Clip(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
 
 
 class EnvironmentFactory(VisualModelFactory):
@@ -70,6 +70,12 @@ class VisualClassificationFactory(VisualModelFactory):
     def create(self, device, pretrained, to_debug=0):
         if not self.model_to_run:
             return None
+
+        # do reflection here
+        model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
+        
+        if ObjectFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
+            return Clip(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
 
 
 class MovementFactory(VisualModelFactory):

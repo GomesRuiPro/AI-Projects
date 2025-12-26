@@ -108,4 +108,15 @@ class ScriptManager(ABC):
                raise Exception("The comments are not the same size after translation!")
            
         return translated_text
+    
+    @staticmethod
+    def generate_pdf(filepath, reportdata, styles_config=None):
         
+        args = []
+        if styles_config:
+            styles_config = Utility.write_json_to_file("styles_config_data.json", styles_config)
+            args =  ["--styles_config=" + styles_config]
+        
+        script = Script("internal", "pdf_report_generator")
+        inputs = [filepath, Utility.write_json_to_file("report_data.json", reportdata)]
+        return script.execute("", inputs, args)

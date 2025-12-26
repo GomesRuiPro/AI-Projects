@@ -4,14 +4,16 @@ from innovation.FeedbackerAi.tools.models.entities.model import ModelData, Model
 
 from torch import Tensor
 
-@dataclass(frozen=True)
+@dataclass()
 class ClassifiedLabel:
     label: str
-    debug_boxes: Tensor = field(compare=False)
+    feature_type: str
+    score: float = field(default=0.0)
+    debug_box: Tensor = field(default=None)
     
 @dataclass
 class VideoAnswer(ModelAnswer):
-    classified_labels: List[ClassifiedLabel] = field(default_factory=set)
+    classified_labels: List[ClassifiedLabel] = field(default_factory=list)
 
 @dataclass
 class VideoQuestion(ModelQuestion):

@@ -6,9 +6,11 @@ from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion
 from innovation.FeedbackerAi.agents.entities.component import Answer
 from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 from innovation.FeedbackerAi.tools.local.utilities import Utility
+from statistics import mean as avg
 from typing import Optional, Dict, Any, List, Set
 import torch
 import os
+import cv2
 
 
 class Model(ABC):
@@ -66,6 +68,9 @@ class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to ex
     @abstractmethod
     def setup(self, video_frames):
         pass
+    
+    def set_device(self, video_frame, video_metadata: List[tuple]):
+        pass
 
 
 # Used for run computer vision models where we do expect to extract features
@@ -76,33 +81,48 @@ class VideoFeatureModel(VideoModel, ABC):
     def execute(self, question: VideoQuestion, model_execute_fn=None, max_results=None) -> List[Answer]:
         
         video_frames = question.video_frames
+        video_metadata = question.metadata
+        if video_metadata:
+            self.num_frames_to_read = video_metadata["num_frames_to_read"] if "num_frames_to_read" in video_metadata else None
+            self.clip_duration_seconds = video_metadata["clip_duration_seconds"] if "clip_duration_seconds" in video_metadata else None
         
         # Setup model
-        if not self.model:
-            self.setup(video_frames[0])
+        self.setup()
+        self.set_device(video_frames[0], video_metadata["content"])
 
-        # Set to evaluation mode
-        self.model.eval()
-
-        # predicted = {}
-        # eval_xtimes = int(round(self.num_frames_to_read / self.clip_duration_seconds))
+        
         key_pressed = None
+        videoAnswers: List[Answer] = list()
         for index, video_frame in enumerate(video_frames):
 
-            # if (index + 1) % eval_xtimes != 0:
-            #     continue
-
+            index += 1
+            
             # Get predictions
             if model_execute_fn:
-                videoAnswers = model_execute_fn(video_frame, max_results)
+                results = model_execute_fn(video_frame, video_metadata["content"], max_results)
             
-            if videoAnswers is None:
+            if not results:
                 Utility.log(f"No results founds in video_frame {index}")
                 continue
             
-            Utility.log(f"Results found in video_frame {index}")
+            videoAnswer = results[0]
             
-            if self.to_debug and videoAnswers.debug_boxes and not (key_pressed == ord('q')):
-                key_pressed = Utility.show_image(video_frame, videoAnswers)
-
+            Utility.log(f"Results found in video_frame {index}")
+            videoAnswer.text = f"frame_index_{index}"
+            
+            if videoAnswer.classified_labels:
+                scores = [classified_label.score for classified_label in videoAnswer.classified_labels]
+                videoAnswer.score = avg(scores) if scores else videoAnswer.score
+            
+            if self.to_debug and not (key_pressed == ord('q')):
+                key_pressed = Utility.show_image(video_frame, videoAnswer.classified_labels)
+                
+            videoAnswers.append(videoAnswer)
+            
+            if key_pressed == ord('q'):
+                cv2.destroyAllWindows()
+            if len(videoAnswers) == max_results:
+                break
+        
+        cv2.destroyAllWindows()
         return videoAnswers

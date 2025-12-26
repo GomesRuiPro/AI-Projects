@@ -10,24 +10,15 @@ from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, Qu
 from innovation.FeedbackerAi.agents.tools_client import Operation
 from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 from innovation.FeedbackerAi.agents.agent import Agent
-from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
 from typing import Optional, Dict, Any, List
 from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE
 from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE_TYPE
-from innovation.FeedbackerAi.tools.local.scripts.script_manager import ScriptManager
-import copy
-
-from innovation.FeedbackerAi.tools.local.memory.db import DB
 from innovation.FeedbackerAi.agents.entities.component import Answer
 from innovation.FeedbackerAi.agents.entities.component import Question
 from innovation.FeedbackerAi.tools.models.entities.text import TextQuestion
 from innovation.FeedbackerAi.tools.models.entities.text import TextAnswer
 from innovation.FeedbackerAi.tools.sources.entities.source import SourceQuestion
 from innovation.FeedbackerAi.tools.sources.entities.source import SourceAnswer
-from innovation.FeedbackerAi.tools.sources.entities.api import ApiQuestion
-from innovation.FeedbackerAi.tools.sources.entities.api import ApiAnswer
-from innovation.FeedbackerAi.tools.sources.entities.browser import BrowserQuestion
-from innovation.FeedbackerAi.tools.sources.entities.browser import BrowserAnswer
 
 LLM_CONFIG = Utility.load_yaml()["llm"]
 
@@ -57,42 +48,21 @@ class LLMGaming(Agent):
         
         for question in questions:
             games_sources_reviews.extend(super().component_concatenate_results_fn(question, SourceClient.get_reviews, max_results_per_game))
-            
-        translated_texts = ScriptManager.translate_text([game_source_review.text for game_source_review in games_sources_reviews])
-        games_sources_reviews_index = 0
-        for translated_text in translated_texts: 
-            games_sources_reviews[games_sources_reviews_index].text = translated_text
-            DB.insert(Utility.answer_to_review(games_sources_reviews[games_sources_reviews_index]))
-            games_sources_reviews_index += 1
 
         return games_sources_reviews
-    
-    def translate_comments(self, comments):   
-        return [ScriptManager.translate_text(comment) for comment in comments]
     
     @Agent.to_fallback(Operation.DO_SENTIMENT_ANALYSIS, ComponentType.MODEL)
     def get_sentiment_score(self, questions: List[TextQuestion]) -> List[TextAnswer]:
                 
         games_sentiments_scores = list()
-        # if max_results == 0:
-        #     max_results = len(questions)
-        
-        translated_comments = ScriptManager.translate_text([question.text for question in questions])
-        for translated_comment in translated_comments:
-            
-            answers: List[TextAnswer] = super().component_intersect_results_fn(Question(translated_comment), ModelClient.run_model)
+        for question in questions:
+            comment = question.text
+            answers: List[TextAnswer] = super().component_intersect_results_fn(Question(comment), ModelClient.run_model)
             
             for answer in answers:
-                answer.metadata["comment"] = translated_comment
+                answer.metadata["comment"] = comment
                 
             games_sentiments_scores.extend(answers)
-            
-        for answer in answers:
-            review_text = answer.metadata["comment"]
-            persisted_review = DB.get_text(review_text)
-            if not persisted_review:
-                raise Exception(f"Review '{review_text}' not found in DB")
-            persisted_review.sentiment = answer.text
                 
         return games_sentiments_scores
     
@@ -179,9 +149,8 @@ class LLMGaming(Agent):
         for question in questions:
             
             answers_trends = super().component_concatenate_results_fn(question, ModelClient.run_model, max_results_per_review)
-            review = DB.get_text(question.text)
             for answer_trend in answers_trends:
-                DB.insert_trend(review.id, Utility.answer_to_trend(answer_trend))
+                answer_trend.metadata["comment"] = question.text
                 
             games_trends.extend(answers_trends) 
             
@@ -262,6 +231,8 @@ class LLMGaming(Agent):
                 ModelClient.run_model)
                 
             classified_games_trends.extend(answers)
+            
+            
                 
         return classified_games_trends
         

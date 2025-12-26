@@ -1,16 +1,19 @@
 from innovation.FeedbackerAi.tools.fallback.donothing.do_nothing import DoNothing
-from innovation.FeedbackerAi.tools.fallback.userinput.user_input import UserInput
+from innovation.FeedbackerAi.tools.fallback.user_input import UserInput
 from innovation.FeedbackerAi.tools.local.entities.genre import GENRE
 from innovation.FeedbackerAi.tools.local.entities.review_sentiment import REVIEW_SENTIMENT
 from innovation.FeedbackerAi.tools.sources.source import Source
 from innovation.FeedbackerAi.tools.players.player import Player
 from innovation.FeedbackerAi.tools.models.model import Model
-from innovation.FeedbackerAi.tools.models.client import ModelClient, Translation, TextClassification, ObjectDetection, Conversation, QuestionAnswer, VisualClassification, SentimentAnalysis, Summarization, FeatureExtraction
+from innovation.FeedbackerAi.tools.models.client import VideoFeatureExtraction, ModelClient, Translation, TextClassification, Conversation, QuestionAnswer, VisualClassification, SentimentAnalysis, Summarization, TextFeatureExtraction
 from innovation.FeedbackerAi.tools.players.client import PlayerClient, GenericPlayer, GamingPlayer
 from innovation.FeedbackerAi.tools.sources.client import SourceClient
+from innovation.FeedbackerAi.tools.fallback.console.console import ConsoleInput
+from innovation.FeedbackerAi.tools.fallback.file.file import JsonInput
 from abc import ABC, abstractmethod
 from innovation.FeedbackerAi.tools.local.utilities import Utility
 import innovation.FeedbackerAi.tools.local.entities.source_type as SOURCE_TYPE
+import innovation.FeedbackerAi.tools.local.entities.model_type as MODEL_VISUAL
 from enum import Enum
 from typing import Optional, Dict, Any, List
 
@@ -24,21 +27,22 @@ class Operation(Enum):
     GET_TRENDS = "get-trends"
     CLASSIFY_TRENDS = "classify-trends"
     DO_SUMMARIZATION = "do-summarization"
-    EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES = "extract-video-object-detection-features"
-    EXTRACT_VIDEO_ENVIRONMENT_FEATURES = "extract-video-environment-features"
-    EXTRACT_VIDEO_MOVEMENT_FEATURES = "extract-video-movement-features"
+    EXTRACT_VIDEO_FEATURES = "extract-video-features"
+    CREATE_FEEDBACK_REPORT = "create-feedback-report"
     
-    def __init__(self, description, output_available_options: Enum = None, input: dict = None):
+    def __init__(self, description, output_available_options: Enum = None, input: dict = None, is_multiple_answers_allowed=False):
         super().__init__()
         self.description = description
         self.input = input
         self.output_available_options = output_available_options
+        self.is_multiple_answers_allowed = is_multiple_answers_allowed
     
 class ExecutionMode(Enum):
-    SKIP = "skip"
+    SKIP = "skip" 
     FALLBACK = "fallback"
-    MULTIPLE = "multiple"
-    SINGLE = "single"
+    MULTIPLE = "multiple" # Forces the use of more than 1 component
+    SINGLE = "single" # Forces the use of only 1 component
+    UNKNOWN = "unknown" # Default behavior: it accepts any number of components to run
 
 class ToolsFactory(ABC):
     
@@ -64,7 +68,7 @@ class ToolsFactory(ABC):
     def createPlayer(self):
         pass
     
-    def _createModels(self, execution_mode: ExecutionMode = ExecutionMode.SINGLE):
+    def _createModels(self, execution_mode: ExecutionMode = ExecutionMode.UNKNOWN):
         models_config: str = self.workflow_config['models']
 
         if not models_config:
@@ -148,7 +152,7 @@ class ToolsFactory(ABC):
 class GetGenreFactory(ToolsFactory):
         
     def createModels(self):
-        model_config_name, execution_mode = super()._createModels()
+        model_config_name, execution_mode = super()._createModels(ExecutionMode.SINGLE)
                     
         client = VisualClassification
         model = client.create(model_config_name, 
@@ -216,7 +220,7 @@ class GetTrendsFactory(ToolsFactory):
         model_config_names, execution_mode = super()._createModels()
         
         models = []     
-        client = FeatureExtraction
+        client = TextFeatureExtraction
         for model_config_name in model_config_names:
             models.append(client.create(model_config_name, 
                                                 self.bot_config["use_model_finetuned"], 
@@ -231,9 +235,9 @@ class GetTrendsFactory(ToolsFactory):
     
 class ClassifyTrendsFactory(ToolsFactory):
     def createModels(self):
-        model_config_names, execution_mode = super()._createModels(ExecutionMode.SINGLE)
+        model_config_names, execution_mode = super()._createModels()
         
-        client = FeatureExtraction
+        client = TextFeatureExtraction
         models = []     
         for model_config_name in model_config_names:
             models.append(client.create(model_config_name, 
@@ -247,18 +251,30 @@ class ClassifyTrendsFactory(ToolsFactory):
     def createPlayer(self):
         return None, None, ExecutionMode.SKIP
     
-class ExtractObjectFeaturesFactory(ToolsFactory):
+class ExtractVideoFeaturesFactory(ToolsFactory):
     def createModels(self):
         model_config_names, execution_mode = super()._createModels()
         
         models = []
-        client = ObjectDetection
-        for model_config_name in model_config_names:
-            models.append(client.create(model_config_name, 
-                                                self.bot_config["use_model_finetuned"], 
-                                                self.bot_config["device_debug"], 
-                                                self.bot_config["device_type"]))
+        clients = [VideoFeatureExtraction, VisualClassification]
+        for client in clients:
+            for model_config_name in model_config_names:
+                models.append(client.create(model_config_name, 
+                                                    self.bot_config["use_model_finetuned"], 
+                                                    self.bot_config["device_debug"], 
+                                                    self.bot_config["device_type"]))
+        
         return models, [client], execution_mode
+    
+    def createSources(self):
+        return [], [], ExecutionMode.SKIP
+    
+    def createPlayer(self):
+        return None, None, ExecutionMode.SKIP
+    
+class CreateFeedbackReport(ToolsFactory):
+    def createModels(self):
+        return [], [], ExecutionMode.SKIP
     
     def createSources(self):
         return [], [], ExecutionMode.SKIP
@@ -285,16 +301,16 @@ class ToolsClient:
             factory = GetGamesFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.GET_REVIEWS:
             factory = GetReviewsFactory(workflow_config_operation, self.bot_config)
-        # elif bot_operation == Operation.DO_TRANSLATION:
-        #     factory = DoTranslationFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.DO_SENTIMENT_ANALYSIS:
             factory = DoSentimentAnalysisFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.GET_TRENDS:
             factory = GetTrendsFactory(workflow_config_operation, self.bot_config)
         elif bot_operation == Operation.CLASSIFY_TRENDS:
             factory = ClassifyTrendsFactory(workflow_config_operation, self.bot_config)
-        elif bot_operation == Operation.EXTRACT_VIDEO_OBJECT_DETECTION_FEATURES:
-            factory = ExtractObjectFeaturesFactory(workflow_config_operation, self.bot_config)          
+        elif bot_operation == Operation.EXTRACT_VIDEO_FEATURES:
+            factory = ExtractVideoFeaturesFactory(workflow_config_operation, self.bot_config)          
+        elif bot_operation == Operation.CREATE_FEEDBACK_REPORT:
+            factory = CreateFeedbackReport(workflow_config_operation, self.bot_config) 
         else:
             raise Exception(f"{bot_operation_str} has not been implement nor exists.")
         
@@ -303,22 +319,27 @@ class ToolsClient:
         player, playerClient, execution_mode_player = factory.createPlayer()
         
         if execution_mode_models == ExecutionMode.FALLBACK:
-            models = [UserInput(bot_operation)]
+            models = [self.decide_user_input(bot_operation)]
         if execution_mode_models == ExecutionMode.SKIP:
             models = [DoNothing()]
             
         if execution_mode_sources == ExecutionMode.FALLBACK:
-            sources = [UserInput(bot_operation)]
+            sources = [self.decide_user_input(bot_operation)]
         if execution_mode_sources == ExecutionMode.SKIP:
             sources = [DoNothing()] 
             
         if execution_mode_player == ExecutionMode.FALLBACK:
-            player = UserInput(bot_operation)
+            player = self.decide_user_input(bot_operation)
         if execution_mode_player == ExecutionMode.SKIP:
             player = DoNothing()
             
-        self.models = {"components": models, "clients": modelsClients, "execution_mode": execution_mode_models}
-        self.sources = {"components": sources, "clients": sourcesClients, "execution_mode": execution_mode_sources}
-        self.player = {"components": player, "execution_mode": execution_mode_player}
+        self.models = {"components": [model for model in models if model], "clients": modelsClients, "execution_mode": execution_mode_models}
+        self.sources = {"components": [source for source in sources if source], "clients": sourcesClients, "execution_mode": execution_mode_sources}
+        self.player = {"components": player, "clients": playerClient, "execution_mode": execution_mode_player}
         
         return self.models, self.sources, self.player
+    
+    def decide_user_input(self, bot_operation: Operation):
+        if bot_operation.output_available_options:
+            return ConsoleInput(bot_operation)
+        return JsonInput(bot_operation)

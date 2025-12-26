@@ -2,7 +2,7 @@ import cv2
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
-from transformers import CLIPProcessor, CLIPModel, AutoConfig
+from transformers import CLIPProcessor, CLIPModel, AutoConfig, pipeline
 from innovation.FeedbackerAi.tools.models.model import VideoFeatureModel
 from typing import Optional, Dict, Any, List, Set
 from innovation.FeedbackerAi.tools.local.utilities import Utility
@@ -11,6 +11,7 @@ from innovation.FeedbackerAi.tools.models.entities.video import VideoAnswer, Cla
 from innovation.FeedbackerAi.tools.models.entities.video import VideoQuestion
 from innovation.FeedbackerAi.agents.entities.component import Answer
 from innovation.FeedbackerAi.agents.entities.component import Question
+from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE
 
 class Clip(VideoFeatureModel):
     
@@ -30,27 +31,18 @@ class Clip(VideoFeatureModel):
     def __init__(self, config, token, model_name, device, pretrained, to_debug):
         super().__init__(config, model_name, device, pretrained, to_debug)
         self.token = token
-        self.processor = None
-        self.class_names = []
-
-    def setup(self,video_frame=None):
-        # Init
-        if self.class_names is None:
-            raise Exception("No 'id2label' attribute found in the config.")
         
+    def setup(self):
+
+        # Init
         if self.config['is_local']:
             self.model = None
             pass
         else:  # calling hugging face
-            self.processor = CLIPProcessor.from_pretrained(
-                self.model_name, token=self.token)
-            self.model = CLIPModel.from_pretrained(
-                self.model_name, token=self.token)
-            self.model_config = AutoConfig.from_pretrained(
-                self.model_name, token=self.token)
+            self.model = pipeline('zero-shot-image-classification', model=self.model_name)
             
-        # Prepare model
-        self.model = self.model.to(self.device)
+        # # Prepare model
+        # self.model = self.model.to(self.device)
 
         # Get transform parameters based on model
         transform_params = self.model_transform_params[
@@ -62,7 +54,7 @@ class Clip(VideoFeatureModel):
                 transforms.ToPILImage(),
                 transforms.Resize(transform_params['side_size']),
                 transforms.CenterCrop(transform_params['crop_size']),
-                transforms.ToTensor(),
+                # transforms.ToTensor(),
                 # transforms.Normalize(self.mean, self.std),
             ]
         )
@@ -75,50 +67,76 @@ class Clip(VideoFeatureModel):
             self.clip_duration_seconds = int(round(
                 (self.num_frames_to_read * transform_params["sampling_rate"])/transform_params["frames_per_second"]))
 
-        # Test which device to use
-        if video_frame is not None:
-            try:
-                self.inference(video_frame)
-            except NotImplementedError as error:
-                print(
-                    f"Warning: Operation is not available for {self.device}. Attempting with cpu...")
-                self.model = self.model.to('cpu')
-
+    # def set_device(self, video_frame, video_metadata=None):
+    #     # Test which device to use
+    #     self.model.eval()
+    # 
+    #     if video_metadata is not None:
+    #         try:
+    #             self.classify(video_frame, video_metadata)
+    #         except NotImplementedError as error:
+    #             if self.device == 'cpu':
+    #                 raise error
+    #             print(
+    #                 f"Warning: Operation is not available for {self.device}. Attempting with cpu...")
+    #             self.model = self.model.to('cpu')
+    #             self.set_device(video_frame, video_metadata)
+                
     def execute(self, video_question: Question, max_results) -> List[Answer]:
-        super().execute(video_question, self.inference, max_results)
+        return super().execute(video_question, self.classify, max_results)
     
     # Make predictions
-    def inference(self, video_frame, max_results) -> List[Answer]:
+    def classify(self, video_frame, video_metadata_content: List[tuple], max_results) -> List[Answer]:
+        
         video_frame_transformed = self.transform(video_frame)
         
-        # Prepare inputs for CLIP
-        inputs = self.processor(text=self.class_names, images=video_frame_transformed, return_tensors="pt", padding=True)
-        # Move all input tensors to the correct device
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        video_labels = [content[0] for content in video_metadata_content]
+        results = self.model(video_frame_transformed, candidate_labels=video_labels)
         
-        answers: List[Answer] = []
-        with torch.no_grad():
-            # Get text and image embeddings
-            text_features = self.model.get_text_features(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask'])
-            image_features = self.model.get_image_features(pixel_values=inputs['pixel_values'])
+        classified_labels: List[ClassifiedLabel] = list()
+        for result in results:
+            if float(result["score"]) > float(self.config["confidence_threshold"]):
+                classified_labels.append(ClassifiedLabel(label=result["label"],
+                                                         debug_box=None,
+                                                         score=float(result["score"]),
+                                                         feature_type=next(obj[1] for obj in video_metadata_content if obj[0] == result["label"])))
             
-            # Normalize features
-            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        if classified_labels:    
+            return [VideoAnswer(text="", score=0.0, classified_labels=classified_labels)]
             
-            # Compute similarities
-            similarities = []
-            for text_feature in text_features:
-                similarity = torch.cosine_similarity(image_features, text_feature, dim=1)
-                similarities.append(similarity.item())
+        return []
+        
+    # def inference(self, video_frame, max_results) -> List[Answer]:
+    #     video_frame_transformed = self.transform(video_frame)
+        
+    #     # Prepare inputs for CLIP
+    #     inputs = self.processor(text=self.class_names, images=video_frame_transformed, return_tensors="pt", padding=True)
+    #     # Move all input tensors to the correct device
+    #     inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+    #     answers: List[Answer] = []
+    #     with torch.no_grad():
+    #         # Get text and image embeddings
+    #         text_features = self.model.get_text_features(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask'])
+    #         image_features = self.model.get_image_features(pixel_values=inputs['pixel_values'])
+            
+    #         # Normalize features
+    #         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+    #         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+            
+    #         # Compute similarities
+    #         similarities = []
+    #         for text_feature in text_features:
+    #             similarity = torch.cosine_similarity(image_features, text_feature, dim=1)
+    #             similarities.append(similarity.item())
 
-            # Find all classes with similarity above the threshold
-            matching_classes = [ClassifiedLabel(self.class_names[i], score) for i, score in enumerate(similarities) if score >= float(self.config["confidence_threshold"])]
-            answers.update(VideoAnswer(matching_classes))
-        if text_features.numel() == 0 and image_features.numel() == 0:
-            return None
+    #         # Find all classes with similarity above the threshold
+    #         matching_classes = [ClassifiedLabel(self.class_names[i], score) for i, score in enumerate(similarities) if score >= float(self.config["confidence_threshold"])]
+    #         answers.update(VideoAnswer(matching_classes))
+    #     if text_features.numel() == 0 and image_features.numel() == 0:
+    #         return None
         
-        return matching_classes, None # classes detected, detection boxes
+    #     return matching_classes, None # classes detected, detection boxes
     
     # def get_predictions(self, video_frame, matching_classes):
     #     predicted = {}

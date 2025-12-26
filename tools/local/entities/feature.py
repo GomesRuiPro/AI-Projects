@@ -22,7 +22,7 @@ class FEATURE_GENERIC(FEATURE_TYPE):
     UI = "ui"
     TECHNICAL = "technical"
     SOCIAL = "social"
-    MONETIZATION = "monetization"
+    CONTENT = "content"
     STORY = "story"
     
 class FEATURE_GAMEPLAY(FEATURE_TYPE):
@@ -33,16 +33,18 @@ class FEATURE_SOUND(FEATURE_TYPE):
     pass
 class FEATURE_UI(FEATURE_TYPE):
     pass
-class FEATURE_TECHNICAL(FEATURE_TYPE):
-    pass
 class FEATURE_SOCIAL(FEATURE_TYPE):
     pass
-class FEATURE_MONETIZATION(FEATURE_TYPE):
+class FEATURE_CONTENT(FEATURE_TYPE):
     pass
 class FEATURE_STORY(FEATURE_TYPE):
     pass
+class FEATURE_MONETIZATION(FEATURE_TYPE):
+    pass
 class FEATURE_UNKNOWN(FEATURE_TYPE):
     pass
+class FEATURE_TECHNICAL(FEATURE_TYPE):
+    MONETIZATION = "monetization", FEATURE_MONETIZATION
         
 class FEATURE(FEATURE_TYPE):
     GENERAL = "general", FEATURE_GENERIC
@@ -52,8 +54,8 @@ class FEATURE(FEATURE_TYPE):
     UI = "ui", FEATURE_UI
     TECHNICAL = "technical", FEATURE_TECHNICAL
     SOCIAL = "social", FEATURE_SOCIAL
-    MONETIZATION = "monetization", FEATURE_MONETIZATION
     STORY = "story", FEATURE_STORY
+    CONTENT = "content",
     UNKNOWN = "unknown", FEATURE_UNKNOWN
 
     def get_subfeatures_descriptions(self) -> List[str]:

@@ -10,46 +10,43 @@ main:
       player: none
     get-games:
       models: none
-      # sources: none
-      sources: ['metacritic']
+      sources: none
+      # sources: ['metacritic']
       player: none
     get-reviews:
       models: none
-      # sources: none
-      sources: ['metacritic']
+      sources: none
+      # sources: ['metacritic']
       player: none
     do-sentiment-analysis:
-      # models: none
-      models: ['cardiffnlp/twitter-roberta-base-sentiment-latest']
+      models: none
+      # models: ['cardiffnlp/twitter-roberta-base-sentiment-latest']
       sources: none
       player: none
     get-trends:
-      # models: none
-      models: ['ml6team/keyphrase-extraction-kbir-inspec']
+      models: none
+      # models: ['ml6team/keyphrase-extraction-kbir-inspec']
       sources: none
       player: none
     classify-trends:
-      # models: fallback
-      models: ['sentence-transformers/all-MiniLM-L6-v2']
+      models: fallback
+      # models: ['sentence-transformers/all-MiniLM-L6-v2']
       sources: none
       player: none
-    extract-video-object-detection-features:
+    extract-video-features:
       models: ['openai/clip-vit-base-patch32']
       sources: none
       player: none
-    extract-video-environment-features:
+    create-feedback-report:
       models: none
       sources: none
       player: none
-    extract-video-movement-features:
-      models: none
-      sources: none
-      player: none
+# You can disable the below parameters by simply removing them.
 vlm:
   use_model_finetuned: False
   testing_path: data/testing/visual/genres
   clip_resolution: 360x640
-  clip_duration_seconds: 300
+  clip_duration_seconds: 300 # We only care about the first X seconds of the video
   # batch_size: 6
   # epochs: 10
   max_num_frames: 50  # the amout of frames we want to read from the video during the clip duration set (e.g. if video has 300 frames, we are only getting 16 frames)
@@ -82,21 +79,28 @@ local:
     ignore_warning: False # in case reload/reset the cache memory is called
 # We can also force the fallback by disabling all of the entities type (model, source or player)
 models:
-  environment:
-  - repository: ultralytics
-    name: torch-hub-yolov5s
-    is_local: False
-    is_enabled: False
-    confidence_threshold: 0.5
-  movement:
-  - repository: none
-    name: none
-    is_local: False
-    is_enabled: False
-    confidence_threshold: 0.5
-  object:
-  - repository: facebook
-    name: detr-resnet-50
+  video_feature_extraction:
+    environment:
+    - repository: ultralytics
+      name: torch-hub-yolov5s
+      is_local: False
+      is_enabled: False
+      confidence_threshold: 0.5
+    movement:
+    - repository: none
+      name: none
+      is_local: False
+      is_enabled: False
+      confidence_threshold: 0.5
+    object:
+    - repository: facebook
+      name: detr-resnet-50
+      is_local: False
+      is_enabled: False
+      confidence_threshold: 0.5
+  video_classification:
+  - repository: pytorch
+    name: x3d-xs
     is_local: False
     is_enabled: False
     confidence_threshold: 0.5
@@ -104,12 +108,6 @@ models:
     name: clip-vit-base-patch32
     is_local: False
     is_enabled: True
-    confidence_threshold: 0.5
-  video_classification:
-  - repository: pytorch
-    name: x3d-xs
-    is_local: False
-    is_enabled: False
     confidence_threshold: 0.5
   conversation: # text generation/chatbots
   - repository: meta-llama
@@ -154,7 +152,7 @@ models:
     confidence_threshold: 0.5
     max_length: 512 # max number of characters/tokens for roberta models. If it is above, it truncates the text
     min_length: 20 # less than this, makes it harder for the model to get the context
-  feature_extraction:
+  text_feature_extraction:
   - repository: ml6team
     name: keyphrase-extraction-kbir-inspec
     is_local: False
@@ -207,3 +205,14 @@ player:
   age_group: ""  # Available: [young > teen > adult > old]
   location: ""  # Available: [Region > Country > Continent]
   gender: ""  # Available: [female, male]
+report:
+  path: data/output
+  score:
+    gameplay: 12.5
+    graphics: 12.5
+    sound: 12.5
+    story: 12.5
+    content: 12.5
+    ui: 12.5
+    technical: 12.5
+    social: 12.5

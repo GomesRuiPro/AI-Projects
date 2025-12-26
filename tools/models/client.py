@@ -8,6 +8,8 @@ from typing import Set, List
 from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
 from innovation.FeedbackerAi.tools.models.factory import TranslationFactory, TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VisualClassificationFactory, ObjectFactory, SentimentAnalysisFactory
+from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_VISUAL_FEATURE_EXTRACTION
+
 
 MODELS_CONFIG = Utility.load_yaml()["models"]
 
@@ -59,7 +61,6 @@ class Translation(ModelClient):
             config, MODELS_CONFIG['hugging_face_token'])
         return translationFactory.create(
             use_model_finetuned, device_debug)
-        return ModelClient.component 
     
 class SentimentAnalysis(ModelClient):
 
@@ -83,11 +84,11 @@ class Summarization(ModelClient):
             use_model_finetuned, device_debug)
           
     
-class FeatureExtraction(ModelClient):
+class TextFeatureExtraction(ModelClient):
 
     @staticmethod
     def create(model_config_name, use_model_finetuned, device_debug):
-        config = MODELS_CONFIG['feature_extraction']
+        config = MODELS_CONFIG['text_feature_extraction']
         featureExtractionFactory = FeatureExtractionFactory(model_config_name,
             config, MODELS_CONFIG['hugging_face_token'])
         return featureExtractionFactory.create(
@@ -111,32 +112,6 @@ class VisualModelClient(ModelClient, ABC):
     @abstractmethod
     def create(model_config_name, use_model_finetuned, device_debug, device_type):
         pass
-    
-class Movement(VisualModelClient):
-
-    @staticmethod
-    def create(model_config_name, use_model_finetuned, device_debug):
-        config = MODELS_CONFIG['movement']
-
-
-class ObjectDetection(VisualModelClient):
-
-    @staticmethod
-    def create(model_config_name, use_model_finetuned, device_debug, device_type):
-        config = MODELS_CONFIG['object']
-        objectFactory = ObjectFactory(model_config_name,
-            config, MODELS_CONFIG['hugging_face_token'])
-        return objectFactory.create(
-            device_type, use_model_finetuned, device_debug)
-        return ModelClient.component
-
-
-class Environment(VisualModelClient):
-
-    @staticmethod
-    def create(use_model_finetuned, device_debug, device_type):
-        config = MODELS_CONFIG['environment']
-
 
 class VisualClassification(VisualModelClient):
 
@@ -146,4 +121,29 @@ class VisualClassification(VisualModelClient):
         visualClassificationFactory = VisualClassificationFactory(model_config_name, config)
         return visualClassificationFactory.create(
             device_type, use_model_finetuned, device_debug)
-        return ModelClient.component
+        
+class VideoFeatureExtraction(VisualModelClient):
+
+    @staticmethod
+    def create(model_config_name, use_model_finetuned, device_debug, device_type):
+        config = MODELS_CONFIG['video_feature_extraction']
+        
+        model = None
+        for model_type in MODEL_VISUAL_FEATURE_EXTRACTION:
+            if model_type == MODEL_VISUAL_FEATURE_EXTRACTION.ENVIRONMENT:
+                VideoFeatureExtraction = EnvironmentFactory(model_config_name, config['environment'], MODELS_CONFIG['hugging_face_token'])
+            elif model_type == MODEL_VISUAL_FEATURE_EXTRACTION.MOVEMENT:
+                VideoFeatureExtraction = MovementFactory(model_config_name, config['movement'], MODELS_CONFIG['hugging_face_token'])
+            elif model_type == MODEL_VISUAL_FEATURE_EXTRACTION.OBJECT_DETECTION:
+                VideoFeatureExtraction = ObjectFactory(model_config_name, config['object'], MODELS_CONFIG['hugging_face_token'])
+            elif model_type == MODEL_VISUAL_FEATURE_EXTRACTION.UNKNOWN:
+                continue
+            else:
+                raise Exception("No visual model was found!")
+            
+            model = VideoFeatureExtraction.create(device_type, use_model_finetuned, device_debug)
+            
+            if model:
+                break
+        
+        return model

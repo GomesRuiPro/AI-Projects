@@ -5,7 +5,8 @@ main:
   # NOTE: [] = empty = 'none' = skips; fallback = triggers fallback; [data] = triggers each entity named data
   workflow:
     extract-genre:
-      models: fallback
+      # models: none
+      models: ['openai/clip-vit-base-patch32']
       sources: none
       player: none
     get-games:
@@ -29,12 +30,13 @@ main:
       sources: none
       player: none
     classify-trends:
-      models: fallback
+      models: none
       # models: ['sentence-transformers/all-MiniLM-L6-v2']
       sources: none
       player: none
     extract-video-features:
-      models: ['openai/clip-vit-base-patch32']
+      models: none
+      # models: ['openai/clip-vit-base-patch32']
       sources: none
       player: none
     create-feedback-report:
@@ -98,9 +100,15 @@ models:
       is_local: False
       is_enabled: False
       confidence_threshold: 0.5
+    classification:
+    - repository: openai
+      name: clip-vit-base-patch32
+      is_local: False
+      is_enabled: True
+      confidence_threshold: 0.5
   video_classification:
-  - repository: pytorch
-    name: x3d-xs
+  - repository: facebook
+    name: bart-large-mnli
     is_local: False
     is_enabled: False
     confidence_threshold: 0.5

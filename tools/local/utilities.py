@@ -108,7 +108,7 @@ class Utility:
         return content            
             
     @staticmethod
-    def show_image(video_frame, model_results: List[ClassifiedLabel]):
+    def show_image(video_frame, model_results: List[dict]):
        # Step 1: Convert to NumPy array
         np_image = video_frame.detach().cpu().numpy()
 
@@ -126,12 +126,12 @@ class Utility:
         # Iterate over detections
         if model_results:
             for idx, model_result in enumerate(model_results):
-                label_name = model_result.label
-                confidence = model_result.score
+                label_name = model_result["label"]
+                confidence = model_result["score"]
                 image_text = f"{label_name}: {confidence:.2f}"
-                if model_result.debug_box:
+                if "debug_box" in model_result and model_result["debug_box"]:
                     # Draw bounding box
-                    xmin, ymin, xmax, ymax = map(int, model_result.debug_box)
+                    xmin, ymin, xmax, ymax = map(int, model_result["debug_box"])
 
                     # Draw rectangle
                     cv2.rectangle(np_bgr, (xmin, ymin),

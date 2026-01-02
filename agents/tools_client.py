@@ -152,14 +152,16 @@ class ToolsFactory(ABC):
 class GetGenreFactory(ToolsFactory):
         
     def createModels(self):
-        model_config_name, execution_mode = super()._createModels(ExecutionMode.SINGLE)
+        model_config_names, execution_mode = super()._createModels(ExecutionMode.SINGLE)
                     
         client = VisualClassification
-        model = client.create(model_config_name, 
+        models = []     
+        for model_config_name in model_config_names:
+            models.append(client.create(model_config_name, 
                                             self.bot_config["use_model_finetuned"], 
                                             self.bot_config["device_debug"], 
-                                            self.bot_config["device_type"])
-        return [model], [client], execution_mode
+                                            self.bot_config["device_type"]))
+        return models, [client], execution_mode
     
     def createSources(self):
         return [], [], ExecutionMode.SKIP
@@ -256,7 +258,7 @@ class ExtractVideoFeaturesFactory(ToolsFactory):
         model_config_names, execution_mode = super()._createModels()
         
         models = []
-        clients = [VideoFeatureExtraction, VisualClassification]
+        clients = [VideoFeatureExtraction]
         for client in clients:
             for model_config_name in model_config_names:
                 models.append(client.create(model_config_name, 

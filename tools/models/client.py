@@ -7,7 +7,7 @@ from innovation.FeedbackerAi.agents.entities.component_type import ComponentType
 from typing import Set, List
 from innovation.FeedbackerAi.tools.models.model import Model
 from innovation.FeedbackerAi.tools.models.factory import ConversationFactory, QuestionAnswerFactory
-from innovation.FeedbackerAi.tools.models.factory import TranslationFactory, TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VisualClassificationFactory, ObjectFactory, SentimentAnalysisFactory
+from innovation.FeedbackerAi.tools.models.factory import VideoFeatureClassificationFactory, TranslationFactory, TextclassificationFactory, FeatureExtractionFactory, SummarizationFactory, EnvironmentFactory, MovementFactory, VisualClassificationFactory, ObjectFactory, SentimentAnalysisFactory
 from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_VISUAL_FEATURE_EXTRACTION
 
 
@@ -118,7 +118,8 @@ class VisualClassification(VisualModelClient):
     @staticmethod
     def create(model_config_name, use_model_finetuned, device_debug, device_type):
         config = MODELS_CONFIG['video_classification']
-        visualClassificationFactory = VisualClassificationFactory(model_config_name, config)
+        visualClassificationFactory = VisualClassificationFactory(model_config_name, 
+                                                                  config, MODELS_CONFIG['hugging_face_token'])
         return visualClassificationFactory.create(
             device_type, use_model_finetuned, device_debug)
         
@@ -136,6 +137,8 @@ class VideoFeatureExtraction(VisualModelClient):
                 VideoFeatureExtraction = MovementFactory(model_config_name, config['movement'], MODELS_CONFIG['hugging_face_token'])
             elif model_type == MODEL_VISUAL_FEATURE_EXTRACTION.OBJECT_DETECTION:
                 VideoFeatureExtraction = ObjectFactory(model_config_name, config['object'], MODELS_CONFIG['hugging_face_token'])
+            elif model_type == MODEL_VISUAL_FEATURE_EXTRACTION.CLASSIFICATION:
+                VideoFeatureExtraction = VideoFeatureClassificationFactory(model_config_name, config['classification'], MODELS_CONFIG['hugging_face_token'])
             elif model_type == MODEL_VISUAL_FEATURE_EXTRACTION.UNKNOWN:
                 continue
             else:

@@ -1,3 +1,4 @@
+from collections import Counter
 import torch
 import cv2
 from innovation.FeedbackerAi.tools.local.utilities import Utility
@@ -128,9 +129,23 @@ class VLMGaming(Agent):
     @Agent.to_fallback(Operation.EXTRACT_GENRE, ComponentType.MODEL)
     def extract_genre(self) -> ModelAnswer:
         
-        model = self.components[0]
-        model.set_video(self.video_frames)
-        return model.execute()
+        videoQuestion = VideoQuestion(video_frames=self.video_frames, text="classify")
+        videoQuestion.metadata["content"] = [member.name for member in GENRE]
+        videoQuestion.metadata["num_frames_to_read"] = VLMGaming.num_frames_to_read
+        videoQuestion.metadata["clip_duration_seconds"] = VLMGaming.clip_duration_seconds
+        videoAnswers = super().component_intersect_results_fn(videoQuestion, ModelClient.run_model)
+        labels = [videoAnswer.metadata['label'] for videoAnswer in videoAnswers]
+        most_common_genre = Counter(labels).most_common(1)
+        answer: ModelAnswer = ModelAnswer(text=most_common_genre[0][0],
+                                            score=most_common_genre[0][1]/len(labels))
+        return [answer]
+    # @validate_video_loaded
+    # @Agent.to_fallback(Operation.EXTRACT_GENRE, ComponentType.MODEL)
+    # def extract_genre(self) -> ModelAnswer:
+        
+    #     model = self.components[0]
+    #     model.set_video(self.video_frames)
+    #     return model.execute()
     
     @validate_video_loaded
     @Agent.to_fallback(Operation.EXTRACT_VIDEO_FEATURES, ComponentType.MODEL)

@@ -74,22 +74,35 @@ class SUBGENRE_SPORTS(GENRE_TYPE):
     EXTREME_SPORTS = "extreme-sports"
     UNKNOWN = "sports"
     
+# class GENRE(GENRE_TYPE):
+#     ACTION = "action", SUBGENRE_ACTION
+#     ADVENTURE = "adventure", SUBGENRE_ADVENTURE
+#     ROLE_PLAYING = "roleplaying", SUBGENRE_RPG
+#     PLATFORMER = "platformer"
+#     PUZZLE = "puzzle", SUBGENRE_PUZZLE
+#     MUSIC_RHYTHM = "music-rythim"
+#     STRATEGY = "strategy", SUBGENRE_STRATEGY
+#     SIMULATION = "simulation", SUBGENRE_SIMULATION
+#     SPORTS = "sports", SUBGENRE_SPORTS
+#     RACING = "racing"
+#     MOBA = "multiplayer-online-battle-arena"
+#     MMO = "massively-multiplayer-online"
+#     BATTLE_ROYALE = "battle-royale"
+#     CARD_GAMES = "cards"
+#     CASINO = "casino"
+#     EDUCATIONAL = "educational"
+#     INDIE = "indie"
+#     UNKNOWN = "unknown"
+    
 class GENRE(GENRE_TYPE):
-    ACTION = "action", SUBGENRE_ACTION
-    ADVENTURE = "adventure", SUBGENRE_ADVENTURE
-    ROLE_PLAYING = "roleplaying", SUBGENRE_RPG
+    ACTION_ADVENTURE = "action-adventure"
+    SHOOTER = "shooter"
+    STRATEGY = "strategy"
+    SIMULATION = "simulation"
+    ROLE_PLAYING = "role-playing"
     PLATFORMER = "platformer"
-    PUZZLE = "puzzle", SUBGENRE_PUZZLE
-    MUSIC_RHYTHM = "music-rythim"
-    STRATEGY = "strategy", SUBGENRE_STRATEGY
-    SIMULATION = "simulation", SUBGENRE_SIMULATION
-    SPORTS = "sports", SUBGENRE_SPORTS
-    RACING = "racing"
-    MOBA = "multiplayer-online-battle-arena"
-    MMO = "massively-multiplayer-online"
-    BATTLE_ROYALE = "battle-royale"
-    CARD_GAMES = "cards"
-    CASINO = "casino"
-    EDUCATIONAL = "educational"
-    INDIE = "indie"
+    PUZZLE = "puzzle"
+    SPORTS = "sports"
+    FIGHTING = "fighting"
     UNKNOWN = "unknown"
+    

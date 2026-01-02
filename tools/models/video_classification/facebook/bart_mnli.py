@@ -13,13 +13,13 @@ from innovation.FeedbackerAi.agents.entities.component import Answer
 from innovation.FeedbackerAi.agents.entities.component import Question
 from innovation.FeedbackerAi.tools.local.entities.feature import FEATURE
 
-class Clip(VideoModel):
+class BartMnli(VideoModel):
     
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
 
     model_transform_params = {
-        "openai/clip-vit-base-patch32": {
+        "facebook/bart-large-mnli": {
             "side_size": 256,  # To force replace the default resolution from config - specific to model
             "crop_size": 224,  # To force replace the default resolution from config - specific to model
             # "max_num_frames": 4, # To force replacing the default max_num_frames from config - specific to model
@@ -39,7 +39,7 @@ class Clip(VideoModel):
             self.model = None
             pass
         else:  # calling hugging face
-            self.model = pipeline('zero-shot-image-classification', model=self.model_name)
+            self.model = pipeline('zero-shot-classification', model=self.model_name)
             
         # # Prepare model
         # self.model = self.model.to(self.device)
@@ -78,11 +78,9 @@ class Clip(VideoModel):
         results = self.model(video_frame_transformed, candidate_labels=video_metadata_content)
         
         videoAnswer = None
-        max_result = results[0]
-        if float(max_result["score"]) > float(self.config["confidence_threshold"]):
-            videoAnswer = VideoAnswer(text=max_result["label"], score=max_result["score"])
-
-        if videoAnswer:
-            return [videoAnswer]
-        return []
+        for result in results:
+            if float(result["score"]) > float(self.config["confidence_threshold"]) and float(result["score"]) > videoAnswer.score:
+                videoAnswer = VideoAnswer(text=result["label"], score=result["score"])
+            
+        return [videoAnswer]
       

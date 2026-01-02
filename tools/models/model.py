@@ -71,6 +71,52 @@ class VideoModel(Model, ABC):  # Used for get Genre where we do not expect to ex
     
     def set_device(self, video_frame, video_metadata: List[tuple]):
         pass
+    
+    def execute(self, question: VideoQuestion, model_execute_fn=None, max_results=None) -> List[Answer]:
+        
+        video_frames = question.video_frames
+        video_metadata = question.metadata
+        if video_metadata:
+            self.num_frames_to_read = video_metadata["num_frames_to_read"] if "num_frames_to_read" in video_metadata else None
+            self.clip_duration_seconds = video_metadata["clip_duration_seconds"] if "clip_duration_seconds" in video_metadata else None
+        
+        # Setup model
+        self.setup()
+        self.set_device(video_frames[0], video_metadata["content"])
+
+        
+        key_pressed = None
+        videoAnswers: List[Answer] = list()
+        for index, video_frame in enumerate(video_frames):
+
+            index += 1
+            
+            # Get predictions
+            if model_execute_fn:
+                results = model_execute_fn(video_frame, video_metadata["content"], max_results)
+            
+            if not results:
+                Utility.log(f"No results founds in video_frame {index}")
+                continue
+            
+            Utility.log(f"Results found in video_frame {index}")
+                        
+            for videoAnswer in results:
+                
+                if self.to_debug and not (key_pressed == ord('q')):
+                    key_pressed = Utility.show_image(video_frame, [{"label": videoAnswer.text, "score": videoAnswer.score}])
+                    
+                videoAnswer.metadata["label"] = videoAnswer.text
+                videoAnswer.text = f"frame_index_{index}"
+                videoAnswers.append(videoAnswer)
+                
+                if key_pressed == ord('q'):
+                    cv2.destroyAllWindows()
+                if len(videoAnswers) == max_results:
+                    break
+        
+        cv2.destroyAllWindows()
+        return videoAnswers
 
 
 # Used for run computer vision models where we do expect to extract features
@@ -115,7 +161,7 @@ class VideoFeatureModel(VideoModel, ABC):
                 videoAnswer.score = avg(scores) if scores else videoAnswer.score
             
             if self.to_debug and not (key_pressed == ord('q')):
-                key_pressed = Utility.show_image(video_frame, videoAnswer.classified_labels)
+                key_pressed = Utility.show_image(video_frame, [Utility.class_attrs_to_dict(classified_label) for classified_label in videoAnswer.classified_labels])
                 
             videoAnswers.append(videoAnswer)
             

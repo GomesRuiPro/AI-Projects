@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
-from innovation.FeedbackerAi.tools.models.video_classification.openai.clip import Clip
+from innovation.FeedbackerAi.tools.models.feature_extraction.openai.clip import Clip as ClipFeature
+from innovation.FeedbackerAi.tools.models.video_classification.openai.clip import Clip as ClipGenre
 from innovation.FeedbackerAi.tools.models.sentiment_analysis.cardiffnlp.twitter_roberta import TwitterRoberta
 from innovation.FeedbackerAi.tools.models.feature_extraction.ml6team.keyphrase_extraction_kbir_inspec import KeyphraseExtractionKbirInspec
-from innovation.FeedbackerAi.tools.models.text_classification.facebook.bart_mnli import BartMnli as FacebookMNLI
+from innovation.FeedbackerAi.tools.models.text_classification.facebook.bart_mnli import BartMnli as TextFacebookMNLI
+from innovation.FeedbackerAi.tools.models.video_classification.facebook.bart_mnli import BartMnli as VideoFacebookMNLI
 from innovation.FeedbackerAi.tools.models.text_classification.microsoft.deberta_mnli import DebertaMnli as MicrosoftMNLI
 from innovation.FeedbackerAi.tools.models.feature_extraction.sentence_transformers.all_minilm_v2 import AllMiniLML6V2
 from innovation.FeedbackerAi.tools.local.entities.model_type import MODEL_TEXT_TRANSLATION, MODEL_TEXT_CLASSIFICATION, MODEL_TEXT_FEATURE_EXTRACTION, MODEL_TEXT_SUMMARIZATION, MODEL_TEXT_QUESTION_ANSWER, MODEL_TEXT_CONVERSATION, MODEL_VISUAL_ENVIRONMENT, MODEL_VISUAL_OBJECT_DETECTION, MODEL_VISUAL_MOVEMENT, MODEL_VISUAL_CLASSIFICATION, MODEL_TEXT_SENTIMENT_ANALYSIS
@@ -27,7 +29,22 @@ class VisualModelFactory(Factory, ABC):
     @abstractmethod
     def create(self, device, pretrained, to_debug=0):
         pass
+    
+class VideoFeatureClassificationFactory(VisualModelFactory):
+    MODEL_TYPE = MODEL_VISUAL_CLASSIFICATION
 
+    def __init__(self, model_config_name, config, token=None):
+        super().__init__(model_config_name, config, token)
+
+    def create(self, device, pretrained, to_debug=0):
+        if not self.model_to_run:
+            return None
+
+        # do reflection here
+        model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
+        
+        if VisualClassificationFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
+            return ClipFeature(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
 class ObjectFactory(VisualModelFactory):
 
     MODEL_TYPE = MODEL_VISUAL_OBJECT_DETECTION
@@ -74,8 +91,10 @@ class VisualClassificationFactory(VisualModelFactory):
         # do reflection here
         model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
         
-        if ObjectFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
-            return Clip(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
+        if VisualClassificationFactory.MODEL_TYPE.OPENAI_CLIP.value in self.model_config_name:
+            return ClipGenre(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
+        if VisualClassificationFactory.MODEL_TYPE.FACEBOOK_BART_MNLI.value in self.model_config_name:
+            return VideoFacebookMNLI(self.model_to_run, self.token, model_name, device, pretrained, to_debug)
 
 
 class MovementFactory(VisualModelFactory):
@@ -195,7 +214,7 @@ class TextclassificationFactory(TextModelFactory, ABC):
         # do reflection here
         model_name = self.model_to_run['repository']+"/"+self.model_to_run['name']
         if TextclassificationFactory.MODEL_TYPE.FACEBOOK_BART_MNLI.value in self.model_config_name:
-            return FacebookMNLI(self.model_to_run, self.token, model_name, pretrained, to_debug)
+            return TextFacebookMNLI(self.model_to_run, self.token, model_name, pretrained, to_debug)
         if TextclassificationFactory.MODEL_TYPE.MICROSOFT_DEBERTA_MNLI.value in self.model_config_name:
             return MicrosoftMNLI(self.model_to_run, self.token, model_name, pretrained, to_debug)
     

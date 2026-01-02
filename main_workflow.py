@@ -257,7 +257,7 @@ def main():
             # }
             componentData.set_operation(Operation.EXTRACT_GENRE)
             answers = vlm_gaming.extract_genre()
-            app_globals.genre = answers[0].text # Only working for 1 genre for now and as a string
+            app_globals.genre = answers[0].text if answers else GENRE.UNKNOWN.name # Only working for 1 genre for now and as a string
             componentData.answers.extend(answers)
             
             print(f"GENRE: {app_globals.genre}")
@@ -283,7 +283,7 @@ def main():
             #     ]
             # }
             componentData.set_operation(Operation.GET_GAMES)
-            questions = [SourceQuestion(answer_genre.text) for answer_genre in answers]
+            questions = [SourceQuestion(app_globals.genre)]
             componentData.questions.extend(questions) 
             answers = llm_gaming.get_popular_games(componentData.get_last_question(), max_results=10)
             componentData.answers.extend(answers)
@@ -512,9 +512,6 @@ def main():
             #     ]
             # }
             componentData.set_operation(Operation.CREATE_FEEDBACK_REPORT)
-            
-            if not DB.trends or not answers_detected_game_features:
-                raise Exception("Report generation cannot be completed without any trends to be compared against to.")
             
             provided_reviews: List[Review] = list()
             for answer_detected_game_feature in answers_detected_game_features:

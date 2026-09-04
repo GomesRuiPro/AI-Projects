@@ -1,0 +1,9 @@
+What is the Feedbacker AI? Essentially, it’s an AI agent that acts as a player. It interacts with a game in development and provides feedback to the team by highlighting both the positives and the negatives. 
+Think of it as a cost-effective, dynamic form of a beta tester. In theory, this sounds cool, right? Well, in practice, it’s a bit more complex. 
+
+Here’s how I envisioned the solution:
+First, we start by looking at the big picture, by selecting  the game genre, then we gather multiple successful games of that genre. 
+We analyze reviews for each of those games and extract their sentiment. 
+Next, we fetch specific keywords that are relevant in the gaming context. 
+Using these keywords, that represent, in a way, game features, we check if they appear in our game. 
+Finally, we generate a report showing how closely our game aligns with what the audience is looking for in future releases. 
